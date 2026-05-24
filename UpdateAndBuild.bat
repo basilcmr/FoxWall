@@ -4,11 +4,24 @@ echo        TinyWall Upstream Update ^& Rebuild
 echo ==============================================
 echo.
 
-cd /d "%~dp0\TinyWall"
+:: Detect directory structure dynamically
+if exist "%~dp0TinyWall\TinyWall.sln" (
+    set "REPO_DIR=%~dp0TinyWall"
+    set "WORKSPACE_DIR=%~dp0"
+) else if exist "%~dp0TinyWall.sln" (
+    set "REPO_DIR=%~dp0"
+    set "WORKSPACE_DIR=%~dp0..\"
+) else (
+    echo ERROR: Could not find TinyWall repository!
+    pause
+    exit /b
+)
 
-:: 1. Run git pull to fetch and merge upstream updates
+cd /d "%REPO_DIR%"
+
+:: 1. Run git pull to fetch and merge upstream updates (master is default for pylorak/TinyWall)
 echo [1/4] Pulling latest changes from pylorak/TinyWall (master)...
-git pull origin master
+git pull upstream master
 if %errorLevel% neq 0 (
     echo.
     echo WARNING: git pull failed or encountered conflicts.
@@ -23,7 +36,7 @@ set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
 set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 
 if exist "%MSBUILD_PATH%" (
-    :: Run MSBuild
+    :: Run MSBuild directly on the TinyWall project
     "%MSBUILD_PATH%" TinyWall\TinyWall.csproj /t:Rebuild /p:Configuration=Release
 ) else (
     echo.
