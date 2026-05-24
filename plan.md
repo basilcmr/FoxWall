@@ -65,3 +65,33 @@ We will implement **Alternative A combined with Digital Signature Lock** to ensu
 2. **Authenticode Verification Integration:**
    - Use the existing `WinTrust.VerifyFileAuthenticode()` helper in [ExceptionSubject.cs](file:///d:/Giraf%20Dropbox/Giraf%20Creatives/zOo%20Backup/Jellyfin%20Net block/TinyWall/TinyWall/ExceptionSubject.cs) to capture the publisher name of the executable.
    - Add a "Trust Publisher" property to whitelists, matching *only* files in the specified path that carry that exact digital signature block.
+
+---
+
+## 4. Import & Export of Application Exceptions List with Settings
+**Goal:** Allow users to export their custom whitelisted/blocked application exceptions list alongside general settings to a JSON backup file, and import them with the choice to either **Replace** the existing configuration or **Merge (Add)** new entries without creating duplicates.
+
+### Architecture & Design Details
+
+#### 1. Data Serialization Schema
+- Define a serialization layout class `FirewallBackup` containing:
+  - `Version`: Version metadata to ensure forward/backward compatibility.
+  - `Settings`: General configuration properties.
+  - `Exceptions`: A list of application whitelisting and block rules (`List<FirewallException>`).
+- Leverage TinyWall's existing JSON helpers (`PolymorphicJsonConverter.cs`, `SerializationHelper.cs`) to serialize/deserialize this payload securely.
+
+#### 2. User Interface Enhancements
+- **Settings Dialog Integration:** Add "Export Config..." and "Import Config..." buttons inside the Settings Panel.
+- **Import Mode Selector Dialog:** When the user imports a backup file, launch a premium, minimalist dialog asking the user to choose their import method:
+  - **Option A: Replace (Overwrite):** Completely clears the existing local database of exceptions and applies the imported exceptions list.
+  - **Option B: Merge (Additive):** Merges the imported exceptions into the current list.
+- **Merge Deduplication Logic:** During Merge mode, traverse both sets and evaluate the identity of each rule based on:
+  - Executable path / name matching.
+  - Service names (if service exceptions).
+  - Port/Protocol parameters.
+  - *Result:* If a match is found, preserve the user's current settings or prompt a resolution; if no match exists, cleanly insert the imported rule.
+
+#### 3. Core Service WCF & DB Integration
+- **IPC Messages:** Create WCF request payloads `ExportSettingsRequest` and `ImportSettingsRequest` in [Message.cs](file:///d:/Giraf%20Dropbox/Giraf%20Creatives/zOo%20Backup/Jellyfin%20Net block/TinyWall/TinyWall/Message.cs).
+- **Service Transaction Safety:** Ensure the import operation on the service side runs inside a database transaction. If the import fails at any step, rollback to the previous active ruleset, avoiding an unstable or corrupted state.
+
