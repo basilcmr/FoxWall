@@ -5,8 +5,46 @@ This document outlines the detailed technical design, architectural changes, and
 ---
 
 # Change Name to FoxWall
-**Goal** Replace the Name TinyWall to FoxWall in the entire solution. License wont allow naming TinyWall, we also need the name changes in settings, folders etc.. but this fork should read Tinywall files by default, if there is already an install, so reinstall wont delete all.
+**Goal:** Replace the Name TinyWall to FoxWall in the entire solution. License terms do not allow using the official "TinyWall" trademark name for custom forks. We need to rename the application, settings, window titles, folders, and registry entries to "FoxWall" while maintaining full, automatic backward compatibility to read existing "TinyWall" configurations so a reinstall or update preserves all custom rules.
 
+### Rebranding & Migration Architectural Plan
+
+#### 1. Namespace & Branding Substitution
+*   **Visual Assets & Labels:** Rename window titles, UI forms, settings tabs, tray tip descriptions, and notifications from "TinyWall" to "FoxWall".
+*   **Metadata Renaming:** Update project properties (`Product`, `AssemblyTitle`, `Company`, `Description`) in [TinyWall.csproj](file:///d:/Giraf%20Dropbox/Giraf%20Creatives/zOo Backup/Jellyfin Net block/TinyWall/TinyWall/TinyWall.csproj) to output `FoxWall.exe`.
+*   **WFP Provider rebranding:** In the core service, rename the Windows Filtering Platform sublayers and display names to "FoxWall Service Provider" to maintain professional OS integration.
+
+#### 2. Legacy Migration Layer (TinyWall -> FoxWall)
+To prevent data loss and ensure a completely seamless transition, we will implement a migration layer inside the core path resolving logic:
+*   **Path Redirection:** Define configuration paths under `FoxWall` (e.g., `%AppData%\FoxWall\` for settings database files and `%ProgramData%\FoxWall\` for service configurations).
+*   **Auto-Migration Routine:** On startup, the service will execute a migration check:
+    ```csharp
+    string oldPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TinyWall");
+    string newPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FoxWall");
+
+    if (!Directory.Exists(newPath) && Directory.Exists(oldPath))
+    {
+        // 1. Create the new FoxWall configuration directory
+        Directory.CreateDirectory(newPath);
+
+        // 2. Safely copy XML configuration, database, and hosts blocker files
+        foreach (string file in Directory.GetFiles(oldPath))
+        {
+            try 
+            {
+                File.Copy(file, Path.Combine(newPath, Path.GetFileName(file)), false);
+            }
+            catch { /* Log migration exception */ }
+        }
+    }
+    ```
+*   **Fallback Fallthrough:** If the migration folder copy fails or specific settings keys are missing, the system will fall back to reading files from the legacy `TinyWall` folder directly to ensure no active whitelists are lost.
+
+#### 3. Service & Registry Upgrades
+*   **Service Registration:** Change the Windows service name from `TinyWall` to `FoxWall`.
+*   **Installer Adaptation:** Update the C# installer (`TinyWallJellyModeInstaller.exe`) to become `FoxWallInstaller.exe`. Configure it to look for both active `TinyWall` and `FoxWall` services during cleanup, stop them safely, migrate database configurations, and register the new `FoxWall` system service seamlessly!
+
+---
 
 ## 1. Premium Dark Mode UI
 **Goal:** Replace the legacy Windows classic control styling with a modern, harmonious dark theme (glowing purple/magenta accents matching Jellyfin, dark charcoal background, sleek typography, and high-contrast borders).
