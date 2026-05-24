@@ -601,9 +601,37 @@ namespace pylorak.TinyWall
                     break;
 
                 case FirewallMode.JellyMode:
-                    Tray.Icon = Resources.Icons.shield_yellow_small;
-                    mnuMode.Image = mnuModeJellyMode.Image;
-                    FirewallModeName = "Jelly Mode";
+                    {
+                        string appDir = System.IO.Path.GetDirectoryName(Utils.ExecutablePath) ?? string.Empty;
+                        string icoPath = System.IO.Path.Combine(appDir, "img", "shield_purple.ico");
+                        string pngPath = System.IO.Path.Combine(appDir, "img", "shield_purple.png");
+                        if (System.IO.File.Exists(icoPath))
+                        {
+                            try
+                            {
+                                Tray.Icon = new System.Drawing.Icon(icoPath);
+                            }
+                            catch
+                            {
+                                Tray.Icon = Resources.Icons.shield_yellow_small;
+                            }
+                        }
+                        else
+                        {
+                            Tray.Icon = Resources.Icons.shield_yellow_small;
+                        }
+
+                        if (System.IO.File.Exists(pngPath))
+                        {
+                            try
+                            {
+                                mnuModeJellyMode.Image = System.Drawing.Image.FromFile(pngPath);
+                            }
+                            catch { }
+                        }
+                        mnuMode.Image = mnuModeJellyMode.Image;
+                        FirewallModeName = "Jelly Mode";
+                    }
                     break;
 
                 case FirewallMode.Unknown:
@@ -726,11 +754,10 @@ namespace pylorak.TinyWall
                         FileName = "cmd.exe",
                         Arguments = $"/c \"{batPath}\"",
                         WorkingDirectory = Path.GetDirectoryName(batPath),
-                        Verb = "runas",
                         UseShellExecute = true
                     };
                     System.Diagnostics.Process.Start(startInfo);
-                    ShowBalloonTip("Update started. TinyWall Service will be stopped, updated, and restarted shortly.", ToolTipIcon.Info);
+                    ShowBalloonTip("Update started. The project will pull, rebuild, and prompt you for permission to install.", ToolTipIcon.Info);
                 }
                 else
                 {
