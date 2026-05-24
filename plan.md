@@ -4,6 +4,10 @@ This document outlines the detailed technical design, architectural changes, and
 
 ---
 
+# Change Name to FoxWall
+**Goal** Replace the Name TinyWall to FoxWall in the entire solution. License wont allow naming TinyWall, we also need the name changes in settings, folders etc.. but this fork should read Tinywall files by default, if there is already an install, so reinstall wont delete all.
+
+
 ## 1. Premium Dark Mode UI
 **Goal:** Replace the legacy Windows classic control styling with a modern, harmonious dark theme (glowing purple/magenta accents matching Jellyfin, dark charcoal background, sleek typography, and high-contrast borders).
 
