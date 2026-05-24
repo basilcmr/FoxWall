@@ -1,0 +1,10 @@
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.exe.config
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.exe
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.pdb
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.csproj.AssemblyReference.cache
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.GeneratedMSBuildEditorConfig.editorconfig
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.AssemblyInfoInputs.cache
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.AssemblyInfo.cs
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.csproj.CoreCompileInputs.cache
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.exe
+D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.pdb
