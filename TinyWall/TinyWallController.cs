@@ -605,37 +605,9 @@ namespace pylorak.TinyWall
                     break;
 
                 case FirewallMode.JellyMode:
-                    {
-                        string appDir = System.IO.Path.GetDirectoryName(Utils.ExecutablePath) ?? string.Empty;
-                        string icoPath = System.IO.Path.Combine(appDir, "img", "shield_purple.ico");
-                        string pngPath = System.IO.Path.Combine(appDir, "img", "shield_purple.png");
-                        if (System.IO.File.Exists(icoPath))
-                        {
-                            try
-                            {
-                                Tray.Icon = new System.Drawing.Icon(icoPath);
-                            }
-                            catch
-                            {
-                                Tray.Icon = Resources.Icons.shield_yellow_small;
-                            }
-                        }
-                        else
-                        {
-                            Tray.Icon = Resources.Icons.shield_yellow_small;
-                        }
-
-                        if (System.IO.File.Exists(pngPath))
-                        {
-                            try
-                            {
-                                mnuModeJellyMode.Image = System.Drawing.Image.FromFile(pngPath);
-                            }
-                            catch { }
-                        }
-                        mnuMode.Image = mnuModeJellyMode.Image;
-                        FirewallModeName = "Jelly Mode";
-                    }
+                    Tray.Icon = Resources.Icons.shield_purple_small;
+                    mnuMode.Image = mnuModeJellyMode.Image;
+                    FirewallModeName = "Jelly Mode";
                     break;
 
                 case FirewallMode.Unknown:
@@ -1450,6 +1422,7 @@ namespace pylorak.TinyWall
                 mnuModeBlockAll.Image = Resources.Icons.shield_yellow_small.ToBitmap();
                 mnuModeNormal.Image = Resources.Icons.shield_green_small.ToBitmap();
                 mnuModeLearn.Image = Resources.Icons.shield_blue_small.ToBitmap();
+                mnuModeJellyMode.Image = Resources.Icons.shield_purple;
                 TrayMenuShowing = false;
 
                 ApplyControllerSettings();
