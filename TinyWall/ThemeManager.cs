@@ -85,6 +85,12 @@ namespace pylorak.TinyWall
 
         private static void ApplyToControl(Control ctrl)
         {
+            // Dynamically upgrade control fonts to Segoe UI for a modern visual feel
+            if (ctrl.Font != null && ctrl.Font.Name != "Segoe UI")
+            {
+                ctrl.Font = new Font("Segoe UI", ctrl.Font.Size, ctrl.Font.Style);
+            }
+
             // Apply standard text & background behavior depending on control type
             if (ctrl is Label label)
             {
@@ -101,13 +107,24 @@ namespace pylorak.TinyWall
             }
             else if (ctrl is Button button)
             {
+                // Enlarge buttons slightly for comfortable spacing and modern look
+                if (button.Height < 30)
+                {
+                    button.Height = 30;
+                }
+
                 button.FlatStyle = FlatStyle.Flat;
                 button.BackColor = SurfaceColor;
                 button.ForeColor = TextPrimary;
                 button.FlatAppearance.BorderColor = AccentColor;
                 button.FlatAppearance.BorderSize = 1;
-                button.FlatAppearance.MouseOverBackColor = Color.FromArgb(50, 50, 50);
-                button.FlatAppearance.MouseDownBackColor = Color.FromArgb(20, 20, 20);
+                button.FlatAppearance.MouseOverBackColor = Color.FromArgb(40, 25, 60); // subtle purple tint hover
+                button.FlatAppearance.MouseDownBackColor = Color.FromArgb(20, 10, 30); // deep purple tint click
+
+                button.MouseEnter -= Button_MouseEnter;
+                button.MouseEnter += Button_MouseEnter;
+                button.MouseLeave -= Button_MouseLeave;
+                button.MouseLeave += Button_MouseLeave;
             }
             else if (ctrl is TextBox textBox)
             {
@@ -135,6 +152,8 @@ namespace pylorak.TinyWall
             {
                 groupBox.ForeColor = TextPrimary;
                 groupBox.BackColor = BackgroundColor;
+                groupBox.Paint -= GroupBox_Paint;
+                groupBox.Paint += GroupBox_Paint;
             }
             else if (ctrl is Panel panel)
             {
@@ -256,6 +275,54 @@ namespace pylorak.TinyWall
                     // Draw top highlight line to give standard premium modern tab look
                     e.Graphics.DrawLine(borderPen, tabRect.X - 1, tabRect.Y + 1, tabRect.Right + 1, tabRect.Y + 1);
                 }
+            }
+        }
+
+        private static void Button_MouseEnter(object? sender, EventArgs e)
+        {
+            if (sender is Button button)
+            {
+                button.FlatAppearance.BorderColor = AccentHighlight;
+            }
+        }
+
+        private static void Button_MouseLeave(object? sender, EventArgs e)
+        {
+            if (sender is Button button)
+            {
+                button.FlatAppearance.BorderColor = AccentColor;
+            }
+        }
+
+        private static void GroupBox_Paint(object? sender, PaintEventArgs e)
+        {
+            if (sender is not GroupBox groupBox)
+                return;
+
+            // Clear legacy border
+            using (var brush = new SolidBrush(BackgroundColor))
+            {
+                e.Graphics.FillRectangle(brush, groupBox.ClientRectangle);
+            }
+
+            // Draw clean flat border
+            using (var pen = new Pen(Color.FromArgb(45, 45, 55), 1))
+            {
+                var rect = new Rectangle(0, 7, groupBox.Width - 1, groupBox.Height - 8);
+                e.Graphics.DrawRectangle(pen, rect);
+            }
+
+            // Draw header text
+            if (!string.IsNullOrEmpty(groupBox.Text))
+            {
+                var textRect = new Rectangle(10, 0, groupBox.Width - 20, 16);
+                var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine;
+                using (var brush = new SolidBrush(BackgroundColor))
+                {
+                    var textWidth = TextRenderer.MeasureText(groupBox.Text, groupBox.Font).Width;
+                    e.Graphics.FillRectangle(brush, 8, 0, textWidth + 4, 15);
+                }
+                TextRenderer.DrawText(e.Graphics, groupBox.Text, groupBox.Font, textRect, TextPrimary, flags);
             }
         }
 

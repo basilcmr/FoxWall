@@ -37,4 +37,6 @@
 /TinyWallJellyModeInstaller/obj/
 /TinyWallJellyModeInstaller/
 
+*.InstallLog
+
 
