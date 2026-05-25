@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -37,6 +37,7 @@ namespace pylorak.TinyWall
         private bool LoadingSettings;
         private string? m_NewPassword;
         private Size IconSize = new((int)Math.Round(16 * Utils.DpiScalingFactor), (int)Math.Round(16 * Utils.DpiScalingFactor));
+        private CheckBox chkEnableDarkMode = null!;
 
         internal SettingsForm(ServerConfiguration service, ControllerSettings controller)
         {
@@ -73,6 +74,16 @@ namespace pylorak.TinyWall
 
             TmpConfig = new ConfigContainer(service, controller);
             TmpConfig.Service.ActiveProfile.Normalize();
+
+            // Dynamically add Dark Mode checkbox
+            this.chkEnableDarkMode = new CheckBox();
+            this.chkEnableDarkMode.Text = "Enable Dark Mode";
+            this.chkEnableDarkMode.AutoSize = true;
+            this.chkEnableDarkMode.Name = "chkEnableDarkMode";
+            this.tableLayoutPanel1.Controls.Add(this.chkEnableDarkMode, 3, 4);
+            this.tableLayoutPanel1.SetColumnSpan(this.chkEnableDarkMode, 2);
+
+            ThemeManager.Apply(this);
         }
 
         private void ListApplications_DragDrop(object sender, DragEventArgs e)
@@ -115,6 +126,7 @@ namespace pylorak.TinyWall
                 chkAutoUpdateCheck.Checked = TmpConfig.Service.AutoUpdateCheck;
                 chkAskForExceptionDetails.Checked = TmpConfig.Controller.AskForExceptionDetails;
                 chkEnableHotkeys.Checked = TmpConfig.Controller.EnableGlobalHotkeys;
+                chkEnableDarkMode.Checked = TmpConfig.Controller.EnableDarkMode;
                 comboLanguages.SelectedIndex = 0;
                 for(int i = 0; i < comboLanguages.Items.Count; ++i)
                 {
@@ -259,7 +271,8 @@ namespace pylorak.TinyWall
 
             if (ex.Policy.PolicyType == PolicyType.HardBlock)
             {
-                li.BackColor = Color.LightPink;
+                li.BackColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(92, 30, 30) : Color.LightPink;
+                li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.White : Color.Black;
             }
 
             if (uwpSubj is not null)
@@ -267,7 +280,8 @@ namespace pylorak.TinyWall
                 if (!packageList.FindPackage(uwpSubj.Sid).HasValue)
                 {
                     li.ImageIndex = IconList.Images.IndexOfKey("deleted");
-                    li.BackColor = Color.LightGray;
+                    li.BackColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(46, 46, 46) : Color.LightGray;
+                    li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(200, 200, 200) : Color.Black;
                 }
             }
 
@@ -294,7 +308,8 @@ namespace pylorak.TinyWall
                 else
                 {
                     li.ImageIndex = IconList.Images.IndexOfKey("deleted");
-                    li.BackColor = Color.LightGray;
+                    li.BackColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(46, 46, 46) : Color.LightGray;
+                    li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(200, 200, 200) : Color.Black;
                 }
             }
 
@@ -319,6 +334,7 @@ namespace pylorak.TinyWall
             // Save settings
             TmpConfig.Controller.AskForExceptionDetails = chkAskForExceptionDetails.Checked;
             TmpConfig.Controller.EnableGlobalHotkeys = chkEnableHotkeys.Checked;
+            TmpConfig.Controller.EnableDarkMode = chkEnableDarkMode.Checked;
             TmpConfig.Service.AutoUpdateCheck = chkAutoUpdateCheck.Checked;
             TmpConfig.Controller.SettingsTabIndex = tabControl1.SelectedIndex;
             TmpConfig.Service.LockHostsFile = chkLockHostsFile.Checked;

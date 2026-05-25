@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ServiceProcess;
 using System.Windows.Forms;
@@ -31,6 +31,7 @@ namespace pylorak.TinyWall
             this.Icon = Resources.Icons.firewall;
             this.btnOK.Image = GlobalInstances.ApplyBtnIcon;
             this.btnCancel.Image = GlobalInstances.CancelBtnIcon;
+            ThemeManager.Apply(this);
         }
 
         private static string GetServiceExecutable(string serviceName)

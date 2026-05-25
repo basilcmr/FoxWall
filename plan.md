@@ -1,10 +1,10 @@
-# TinyWall Custom Mod - Future Roadmap & Architecture Plan
+# FoxWall - Future Roadmap & Architecture Plan
 
-This document outlines the detailed technical design, architectural changes, and security considerations for the three major future enhancements of our modified TinyWall firewall.
+This document outlines the detailed technical design, architectural changes, and security considerations for the three major future enhancements of our modified FoxWall firewall.
 
----
+--- 
 
-# Change Name to FoxWall
+# 0. Change Name to FoxWall
 **Goal:** Replace the Name TinyWall to FoxWall in the entire solution. License terms do not allow using the official "TinyWall" trademark name for custom forks. We need to rename the application, settings, window titles, folders, and registry entries to "FoxWall" while maintaining full, automatic backward compatibility to read existing "TinyWall" configurations so a reinstall or update preserves all custom rules.
 
 ### Rebranding & Migration Architectural Plan

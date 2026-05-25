@@ -8,3 +8,14 @@ D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyMode
 D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.csproj.CoreCompileInputs.cache
 D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.exe
 D:\Giraf Dropbox\Giraf Creatives\zOo Backup\Jellyfin Net block\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.pdb
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.exe.config
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.exe
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.pdb
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.csproj.AssemblyReference.cache
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.GeneratedMSBuildEditorConfig.editorconfig
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.AssemblyInfoInputs.cache
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.AssemblyInfo.cs
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.csproj.CoreCompileInputs.cache
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.sourcelink.json
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.exe
+D:\Programming\FoxWall\TinyWallJellyModeInstaller\obj\Release\net48\TinyWallJellyModeInstaller.pdb

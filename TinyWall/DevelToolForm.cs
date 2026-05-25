@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
@@ -29,6 +29,7 @@ namespace pylorak.TinyWall
                 );
 
             InitializeComponent();
+            ThemeManager.Apply(this);
         }
 
         private void btnAssocBrowse_Click(object sender, EventArgs e)

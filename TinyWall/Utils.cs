@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Security;
 using System.Diagnostics;
@@ -582,6 +582,17 @@ namespace pylorak.TinyWall
         internal static DialogResult ShowMessageBox(string msg, string title, TaskDialogCommonButtons buttons, TaskDialogIcon icon, IWin32Window? parent = null)
         {
             Utils.SplitFirstLine(msg, out string firstLine, out string contentLines);
+
+            if (ActiveConfig.Controller != null && ActiveConfig.Controller.EnableDarkMode)
+            {
+                using (var f = new DarkMessageBoxForm(title, firstLine, contentLines, buttons, icon))
+                {
+                    if (parent is null)
+                        return f.ShowDialog();
+                    else
+                        return f.ShowDialog(parent);
+                }
+            }
 
             var taskDialog = new TaskDialog
             {

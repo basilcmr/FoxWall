@@ -4,11 +4,15 @@
     <StartArguments>/selfhosted</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
-    <StartArguments></StartArguments>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <ItemGroup>
     <Compile Update="..\pylorak.Windows\TaskDialog\TaskDialogCommonDialog.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="DarkMessageBoxForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Installer\TinyWallInstaller.cs">
       <SubType>Component</SubType>

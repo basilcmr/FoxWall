@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 
 namespace pylorak.TinyWall
@@ -13,6 +13,7 @@ namespace pylorak.TinyWall
             Utils.SetRightToLeft(this);
             this.btnOK.Image = GlobalInstances.ApplyBtnIcon;
             this.btnCancel.Image = GlobalInstances.CancelBtnIcon;
+            ThemeManager.Apply(this);
         }
 
         private void btnOK_Click(object sender, EventArgs e)

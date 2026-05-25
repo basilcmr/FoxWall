@@ -364,6 +364,10 @@ namespace pylorak.TinyWall
 
             InitializeComponent();
             Utils.SetRightToLeft(TrayMenu);
+            if (ActiveConfig.Controller != null && ActiveConfig.Controller.EnableDarkMode)
+            {
+                TrayMenu.Renderer = ThemeManager.GetToolStripRenderer();
+            }
             MouseInterceptor.MouseLButtonDown += new MouseInterceptor.MouseHookLButtonDown(MouseInterceptor_MouseLButtonDown);
             TrafficTimer = new System.Threading.Timer(TrafficTimerTick, null, Timeout.Infinite, Timeout.Infinite);
             UpdateTimer = new System.Threading.Timer(UpdateTimerTick, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(240));

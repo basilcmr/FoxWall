@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
@@ -97,6 +97,7 @@ namespace pylorak.TinyWall
             cmbTimer.DisplayMember = "Key";
             cmbTimer.ValueMember = "Value";
             cmbTimer.ResumeLayout(true);
+            ThemeManager.Apply(this);
         }
 
         private void ApplicationExceptionForm_Load(object sender, EventArgs e)

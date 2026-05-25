@@ -34,33 +34,25 @@ namespace TinyWallJellyModeInstaller
 
                 string destDir = @"C:\Program Files (x86)\TinyWall";
                 
-                // 2. Stop TinyWall Service
+                // 2. Stop TinyWall Service and terminate tray processes using taskkill to fully unlock files
                 try
                 {
-                    using (var sc = new ServiceController("TinyWall"))
+                    var psi = new ProcessStartInfo
                     {
-                        if (sc.Status != ServiceControllerStatus.Stopped && sc.Status != ServiceControllerStatus.StopPending)
-                        {
-                            sc.Stop();
-                            sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(10));
-                        }
+                        FileName = "taskkill.exe",
+                        Arguments = "/F /IM TinyWall.exe",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+                    using (var p = Process.Start(psi))
+                    {
+                        p?.WaitForExit(5000);
                     }
                 }
                 catch { }
 
-                // 3. Terminate running TinyWall tray processes to unlock files
-                foreach (var proc in Process.GetProcessesByName("TinyWall"))
-                {
-                    try
-                    {
-                        proc.Kill();
-                        proc.WaitForExit(3000);
-                    }
-                    catch { }
-                }
-
                 // Wait another second to ensure files are fully unlocked
-                Thread.Sleep(1000);
+                Thread.Sleep(1500);
 
                 // 4. Extract embedded ZIP resource
                 string tempZipPath = Path.Combine(Path.GetTempPath(), "TinyWallFiles.zip");

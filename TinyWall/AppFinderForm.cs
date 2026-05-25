@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Collections.Generic;
 using System.Globalization;
@@ -28,6 +28,7 @@ namespace pylorak.TinyWall
             this.btnStartDetection.Image = GlobalInstances.ApplyBtnIcon;
 
             btnSelectImportant.Visible = false;
+            ThemeManager.Apply(this);
         }
 
         private void btnStartDetection_Click(object sender, EventArgs e)

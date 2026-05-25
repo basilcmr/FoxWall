@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Diagnostics.CodeAnalysis;
@@ -77,6 +77,10 @@ namespace pylorak.TinyWall
         // Hotkeys
         [DataMember(EmitDefaultValue = false)]
         public bool EnableGlobalHotkeys = true;
+
+        // Dark Mode
+        [DataMember(EmitDefaultValue = false)]
+        public bool EnableDarkMode = true;
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext sc)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -22,6 +22,7 @@ namespace pylorak.TinyWall
 
             IconList.ImageSize = IconSize;
             IconList.Images.Add("store", Resources.Icons.store);
+            ThemeManager.Apply(this);
         }
 
         internal static List<UwpPackageList.Package> ChoosePackage(IWin32Window parent, bool multiSelect)
