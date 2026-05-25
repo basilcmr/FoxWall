@@ -2,6 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
