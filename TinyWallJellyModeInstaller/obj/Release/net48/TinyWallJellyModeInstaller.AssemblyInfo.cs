@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TinyWallJellyModeInstaller")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f066f7294898f880471eec4366b8df8fa0af9f46")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c517573ac30146bc66baf6dc1fb3b6f21ce0b28c")]
 [assembly: System.Reflection.AssemblyProductAttribute("TinyWallJellyModeInstaller")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TinyWallJellyModeInstaller")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
