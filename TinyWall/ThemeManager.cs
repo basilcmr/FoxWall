@@ -219,10 +219,11 @@ namespace pylorak.TinyWall
             Rectangle tabRect = tabControl.GetTabRect(e.Index);
             bool isSelected = e.Index == tabControl.SelectedIndex;
 
-            // Paint tab background
+            // Paint tab background (slightly inflated to cover standard system 3D white borders)
+            var fillRect = new Rectangle(tabRect.X - 2, tabRect.Y - 2, tabRect.Width + 4, tabRect.Height + 4);
             using (var backBrush = new SolidBrush(isSelected ? SurfaceColor : BackgroundColor))
             {
-                e.Graphics.FillRectangle(backBrush, tabRect);
+                e.Graphics.FillRectangle(backBrush, fillRect);
             }
 
             // Draw tab text
@@ -236,13 +237,24 @@ namespace pylorak.TinyWall
                 e.Graphics.DrawString(tabPage.Text, tabControl.Font ?? e.Font ?? SystemFonts.DefaultFont, textBrush, tabRect, sf);
             }
 
+            // Draw a sleek, flat dark border around the tab to make it look clean and modern
+            using (var pen = new Pen(Color.FromArgb(40, 40, 40), 1))
+            {
+                // Top line
+                e.Graphics.DrawLine(pen, tabRect.X - 1, tabRect.Y, tabRect.Right + 1, tabRect.Y);
+                // Left line
+                e.Graphics.DrawLine(pen, tabRect.X - 1, tabRect.Y, tabRect.X - 1, tabRect.Bottom);
+                // Right line
+                e.Graphics.DrawLine(pen, tabRect.Right + 1, tabRect.Y, tabRect.Right + 1, tabRect.Bottom);
+            }
+
             // Draw glowing accent border on the selected tab
             if (isSelected)
             {
                 using (var borderPen = new Pen(AccentHighlight, 2))
                 {
                     // Draw top highlight line to give standard premium modern tab look
-                    e.Graphics.DrawLine(borderPen, tabRect.X, tabRect.Y + 1, tabRect.Right, tabRect.Y + 1);
+                    e.Graphics.DrawLine(borderPen, tabRect.X - 1, tabRect.Y + 1, tabRect.Right + 1, tabRect.Y + 1);
                 }
             }
         }
