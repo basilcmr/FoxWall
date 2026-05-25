@@ -13,10 +13,51 @@ namespace pylorak.TinyWall
         public static readonly Color AccentColor = Color.FromArgb(111, 53, 165);         // #6F35A5 (Purple)
         public static readonly Color AccentHighlight = Color.FromArgb(162, 0, 255);      // #A200FF (Glow)
         public static readonly Color TextPrimary = Color.FromArgb(255, 255, 255);       // #FFFFFF
-        public static readonly Color TextSecondary = Color.FromArgb(160, 160, 160);     // #A0A0A0
+        public static readonly Color TextSecondary = Color.FromArgb(180, 180, 180);     // #B4B4B4
 
         [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
         private static extern int SetWindowTheme(IntPtr hWnd, string? pszSubAppName, string? pszSubIdList);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private static bool UseImmersiveDarkMode(IntPtr handle, bool enabled)
+        {
+            int useDarkMode = enabled ? 1 : 0;
+            int result = DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDarkMode, 4);
+            if (result != 0)
+            {
+                result = DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref useDarkMode, 4);
+            }
+            return result == 0;
+        }
+
+        private static void Form_HandleCreated(object? sender, EventArgs e)
+        {
+            if (sender is Form form)
+            {
+                try
+                {
+                    UseImmersiveDarkMode(form.Handle, true);
+                }
+                catch { }
+            }
+        }
+
+        private static void TabControl_HandleCreated(object? sender, EventArgs e)
+        {
+            if (sender is TabControl tabControl)
+            {
+                try
+                {
+                    SetWindowTheme(tabControl.Handle, "", "");
+                }
+                catch { }
+            }
+        }
 
         private static readonly ToolStripRenderer MenuRenderer = new DarkToolStripRenderer();
 
@@ -32,6 +73,17 @@ namespace pylorak.TinyWall
 
             form.BackColor = BackgroundColor;
             form.ForeColor = TextPrimary;
+
+            // Apply modern dark title bar immediately
+            try
+            {
+                UseImmersiveDarkMode(form.Handle, true);
+            }
+            catch { }
+
+            // Ensure dark title bar remains applied if form handle is recreated
+            form.HandleCreated -= Form_HandleCreated;
+            form.HandleCreated += Form_HandleCreated;
 
             ApplyToControls(form.Controls);
 
@@ -177,9 +229,25 @@ namespace pylorak.TinyWall
             }
             else if (ctrl is TabControl tabControl)
             {
+                try
+                {
+                    SetWindowTheme(tabControl.Handle, "", "");
+                }
+                catch { }
+
+                // Ensure the themed border is stripped again if the handle is recreated by WinForms
+                tabControl.HandleCreated -= TabControl_HandleCreated;
+                tabControl.HandleCreated += TabControl_HandleCreated;
+
                 tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
                 tabControl.DrawItem -= TabControl_DrawItem;
                 tabControl.DrawItem += TabControl_DrawItem;
+
+                // Spacious modern horizontal and vertical padding for tab headers
+                tabControl.Padding = new Point(20, 8);
+
+                // Make the font of the tab control slightly larger for beautiful readability
+                tabControl.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
 
                 if (tabControl.Tag is not TabControlBrush)
                 {
@@ -238,42 +306,40 @@ namespace pylorak.TinyWall
             Rectangle tabRect = tabControl.GetTabRect(e.Index);
             bool isSelected = e.Index == tabControl.SelectedIndex;
 
-            // Paint tab background (slightly inflated to cover standard system 3D white borders)
-            var fillRect = new Rectangle(tabRect.X - 2, tabRect.Y - 2, tabRect.Width + 4, tabRect.Height + 4);
-            using (var backBrush = new SolidBrush(isSelected ? SurfaceColor : BackgroundColor))
+            // Paint entire tab rect background as flat BackgroundColor (same as dialog backdrop)
+            // This ensures NO grey or bordered squares are visible!
+            using (var backBrush = new SolidBrush(BackgroundColor))
             {
-                e.Graphics.FillRectangle(backBrush, fillRect);
+                e.Graphics.FillRectangle(backBrush, tabRect.X - 2, tabRect.Y - 2, tabRect.Width + 4, tabRect.Height + 4);
             }
 
-            // Draw tab text
+            // Draw tab text centered with correct modern font weight and size
             using (var textBrush = new SolidBrush(isSelected ? TextPrimary : TextSecondary))
             {
+                var font = isSelected 
+                    ? new Font(tabControl.Font ?? e.Font ?? SystemFonts.DefaultFont, FontStyle.Bold)
+                    : tabControl.Font ?? e.Font ?? SystemFonts.DefaultFont;
+
                 var sf = new StringFormat
                 {
                     Alignment = StringAlignment.Center,
                     LineAlignment = StringAlignment.Center
                 };
-                e.Graphics.DrawString(tabPage.Text, tabControl.Font ?? e.Font ?? SystemFonts.DefaultFont, textBrush, tabRect, sf);
+                e.Graphics.DrawString(tabPage.Text, font, textBrush, tabRect, sf);
+                if (isSelected && font != tabControl.Font)
+                {
+                    font.Dispose(); // Clean up dynamic bold font!
+                }
             }
 
-            // Draw a sleek, flat dark border around the tab to make it look clean and modern
-            using (var pen = new Pen(Color.FromArgb(40, 40, 40), 1))
-            {
-                // Top line
-                e.Graphics.DrawLine(pen, tabRect.X - 1, tabRect.Y, tabRect.Right + 1, tabRect.Y);
-                // Left line
-                e.Graphics.DrawLine(pen, tabRect.X - 1, tabRect.Y, tabRect.X - 1, tabRect.Bottom);
-                // Right line
-                e.Graphics.DrawLine(pen, tabRect.Right + 1, tabRect.Y, tabRect.Right + 1, tabRect.Bottom);
-            }
-
-            // Draw glowing accent border on the selected tab
+            // Draw gorgeous bottom accent underline on the selected tab
             if (isSelected)
             {
-                using (var borderPen = new Pen(AccentHighlight, 2))
+                using (var accentBrush = new SolidBrush(AccentHighlight))
                 {
-                    // Draw top highlight line to give standard premium modern tab look
-                    e.Graphics.DrawLine(borderPen, tabRect.X - 1, tabRect.Y + 1, tabRect.Right + 1, tabRect.Y + 1);
+                    // Draw a 3px thick underline at the bottom of the active tab header
+                    var underlineRect = new Rectangle(tabRect.X + 6, tabRect.Bottom - 3, tabRect.Width - 12, 3);
+                    e.Graphics.FillRectangle(accentBrush, underlineRect);
                 }
             }
         }
@@ -425,6 +491,12 @@ namespace pylorak.TinyWall
                             if (tabPage.Top > lastTabRect.Bottom)
                             {
                                 g.FillRectangle(brush, 0, lastTabRect.Bottom, _tabControl.Width, tabPage.Top - lastTabRect.Bottom);
+                            }
+
+                            // 3. Draw a modern divider line below the entire tab strip
+                            using (var linePen = new Pen(Color.FromArgb(45, 45, 55), 1))
+                            {
+                                g.DrawLine(linePen, 0, tabPage.Top - 1, _tabControl.Width, tabPage.Top - 1);
                             }
                         }
                     }
