@@ -33,6 +33,8 @@
 /MsiSetup/bin/
 /MsiSetup/Sources/ProgramFiles/
 
-# ignore this folder named "TinyWallJellyModeInstaller"
-/TinyWallJellyModeInstaller
+/TinyWallJellyModeInstaller/bin/
+/TinyWallJellyModeInstaller/obj/
+/TinyWallJellyModeInstaller/
+
 

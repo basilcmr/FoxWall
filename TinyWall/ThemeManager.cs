@@ -134,17 +134,27 @@ namespace pylorak.TinyWall
             else if (ctrl is GroupBox groupBox)
             {
                 groupBox.ForeColor = TextPrimary;
-                groupBox.BackColor = Color.Transparent;
+                groupBox.BackColor = BackgroundColor;
             }
             else if (ctrl is Panel panel)
             {
-                panel.BackColor = Color.Transparent;
+                panel.BackColor = BackgroundColor;
                 panel.ForeColor = TextPrimary;
             }
             else if (ctrl is TableLayoutPanel tableLayoutPanel)
             {
-                tableLayoutPanel.BackColor = Color.Transparent;
+                tableLayoutPanel.BackColor = BackgroundColor;
                 tableLayoutPanel.ForeColor = TextPrimary;
+            }
+            else if (ctrl is FlowLayoutPanel flowLayoutPanel)
+            {
+                flowLayoutPanel.BackColor = BackgroundColor;
+                flowLayoutPanel.ForeColor = TextPrimary;
+            }
+            else if (ctrl is UserControl userControl)
+            {
+                userControl.BackColor = BackgroundColor;
+                userControl.ForeColor = TextPrimary;
             }
             else if (ctrl is TabControl tabControl)
             {
