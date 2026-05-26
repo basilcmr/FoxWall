@@ -241,6 +241,40 @@ namespace pylorak.TinyWall
                         if (UserSubjectExes.Contains(procPath))
                             continue;
 
+                        // [FoxWall Enhancement] - Scan currently running processes on startup/reload for wildcard exceptions
+                        bool wildcardMatched = false;
+                        foreach (var userEx in ActiveConfig.Service.ActiveProfile.AppExceptions)
+                        {
+                            if (userEx.Subject is ExecutableSubject referenceExe)
+                            {
+                                string refPath = referenceExe.ExecutablePath;
+                                if (refPath.Contains("*") || refPath.Contains("?"))
+                                {
+                                    if (WildcardHelper.IsWildcardMatch(refPath, procPath))
+                                    {
+                                        var testee = new ExecutableSubject(procPath);
+                                        // DIGITAL SIGNATURE LOCK: Enforce that wildcard matches must carry a valid digital signature
+                                        if (testee.IsSigned && testee.CertValid)
+                                        {
+                                            GetRulesForException(new FirewallExceptionV3(testee, userEx.Policy), rules, rawSocketExceptions, (ulong)FilterWeights.UserPermit, (ulong)FilterWeights.UserBlock);
+                                            UserSubjectExes.Add(procPath);
+
+                                            if (userEx.ChildProcessesInherit)
+                                            {
+                                                if (!ChildInheritance.ContainsKey(procPath))
+                                                    ChildInheritance.Add(procPath, new List<FirewallExceptionV3>());
+                                                ChildInheritance[procPath].Add(userEx);
+                                            }
+                                            wildcardMatched = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (wildcardMatched)
+                            continue;
+
                         // Start walking up the process tree
                         for (var parentEntry = procTree[pair.Key]; ;)
                         {
@@ -569,6 +603,12 @@ namespace pylorak.TinyWall
                 if (!Utils.IsNullOrEmpty(r.Application))
                 {
                     System.Diagnostics.Debug.Assert(!r.Application.Equals("*"));
+
+                    // [FoxWall Enhancement] - If the application path contains wildcards, do not try to register it in WFP
+                    if (r.Application.Contains("*") || r.Application.Contains("?"))
+                    {
+                        return;
+                    }
 
                     if (!LayerIsIcmpError(layer))
                         conditions.Add(new AppIdFilterCondition(r.Application, false, true));
@@ -1778,6 +1818,45 @@ namespace pylorak.TinyWall
                     // Skip if we have a user-defined rule for this path
                     if (UserSubjectExes.Contains(path))
                         return;
+
+                    // [FoxWall Enhancement] - Check if the starting process matches any custom wildcard exceptions in real-time
+                    if (ActiveConfig.Service != null && ActiveConfig.Service.ActiveProfile != null)
+                    {
+                        foreach (var userEx in ActiveConfig.Service.ActiveProfile.AppExceptions)
+                        {
+                            if (userEx.Subject is ExecutableSubject referenceExe)
+                            {
+                                string refPath = referenceExe.ExecutablePath;
+                                if (refPath.Contains("*") || refPath.Contains("?"))
+                                {
+                                    if (WildcardHelper.IsWildcardMatch(refPath, path))
+                                    {
+                                        var testee = new ExecutableSubject(path);
+                                        // DIGITAL SIGNATURE LOCK: Enforce that wildcard matches must carry a valid digital signature
+                                        if (testee.IsSigned && testee.CertValid)
+                                        {
+                                            newExceptions ??= new List<FirewallExceptionV3>();
+                                            newExceptions.Add(new FirewallExceptionV3(testee, userEx.Policy)
+                                            {
+                                                ChildProcessesInherit = userEx.ChildProcessesInherit
+                                            });
+
+                                            // Cache resolved path to prevent redundant rules recreation
+                                            UserSubjectExes.Add(path);
+
+                                            if (userEx.ChildProcessesInherit)
+                                            {
+                                                if (!ChildInheritance.ContainsKey(path))
+                                                    ChildInheritance.Add(path, new List<FirewallExceptionV3>());
+                                                ChildInheritance[path].Add(userEx);
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // This list will hold parents that we already checked for a process.
                     // Used to avoid infinite loop when parent-PID info is unreliable.

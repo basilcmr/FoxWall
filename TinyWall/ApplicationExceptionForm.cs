@@ -98,6 +98,9 @@ namespace pylorak.TinyWall
             cmbTimer.ValueMember = "Value";
             cmbTimer.ResumeLayout(true);
             ThemeManager.Apply(this);
+
+            // [FoxWall Enhancement] - Allow editing of the application path so users can type wildcards
+            this.txtAppPath.ReadOnly = false;
         }
 
         private void ApplicationExceptionForm_Load(object sender, EventArgs e)
@@ -298,6 +301,17 @@ namespace pylorak.TinyWall
 
         private void btnOK_Click(object sender, EventArgs e)
         {
+            // [FoxWall Enhancement] - Start of Custom Wildcard/Directory Whitelisting
+            if (TmpExceptionSettings[0].Subject is ExecutableSubject && !(TmpExceptionSettings[0].Subject is ServiceSubject))
+            {
+                string editedPath = txtAppPath.Text.Trim();
+                if (!string.IsNullOrEmpty(editedPath) && editedPath != Resources.Messages.AllApplications)
+                {
+                    TmpExceptionSettings[0].Subject = new ExecutableSubject(editedPath);
+                }
+            }
+            // [FoxWall Enhancement] - End of Custom Wildcard/Directory Whitelisting
+
             TmpExceptionSettings[0].ChildProcessesInherit = chkInheritToChildren.Checked;
 
             if (radBlock.Checked)

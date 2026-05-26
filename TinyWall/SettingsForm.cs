@@ -66,7 +66,10 @@ namespace pylorak.TinyWall
             IconList.Images.Add("window", Resources.Icons.window);
             IconList.Images.Add("store", Resources.Icons.store);
             IconList.Images.Add("system", Resources.Icons.windows_small);
-            IconScanner = new AsyncIconScanner(lvi => { return ((lvi.Tag as FirewallExceptionV3)!.Subject as ExecutableSubject)?.ExecutablePath ?? string.Empty; }, IconList.Images.IndexOfKey(TEMP_ICON_KEY));
+            IconScanner = new AsyncIconScanner(lvi => {
+                string rawPath = ((lvi.Tag as FirewallExceptionV3)!.Subject as ExecutableSubject)?.ExecutablePath ?? string.Empty;
+                return WildcardHelper.ResolveWildcardPath(rawPath);
+            }, IconList.Images.IndexOfKey(TEMP_ICON_KEY));
 
             listApplications.AllowDrop = true;
             listApplications.DragEnter += ListApplications_DragEnter;
@@ -293,16 +296,25 @@ namespace pylorak.TinyWall
                 {
                     li.ImageIndex = IconList.Images.IndexOfKey("system");
                 }
-                else if (File.Exists(exeSubj.ExecutablePath))
-                {
-                    // Real icon will be loaded later asynchronously, for now just assign a generic icon
-                    li.ImageIndex = IconList.Images.ContainsKey(exeSubj.ExecutablePath) ? IconList.Images.IndexOfKey(exeSubj.ExecutablePath) : IconScanner.TemporaryIconIdx;
-                }
                 else
                 {
-                    li.ImageIndex = IconList.Images.IndexOfKey("deleted");
-                    li.BackColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(46, 46, 46) : Color.LightGray;
-                    li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(200, 200, 200) : Color.Black;
+                    string resolvedPath = WildcardHelper.ResolveWildcardPath(exeSubj.ExecutablePath);
+                    if (File.Exists(resolvedPath))
+                    {
+                        // Real icon will be loaded later asynchronously, for now just assign a generic icon
+                        li.ImageIndex = IconList.Images.ContainsKey(resolvedPath) ? IconList.Images.IndexOfKey(resolvedPath) : IconScanner.TemporaryIconIdx;
+                    }
+                    else if (exeSubj.ExecutablePath.Contains("*") || exeSubj.ExecutablePath.Contains("?"))
+                    {
+                        // Wildcard path that is not yet resolved to a real path on disk: show generic executable icon
+                        li.ImageIndex = IconScanner.TemporaryIconIdx;
+                    }
+                    else
+                    {
+                        li.ImageIndex = IconList.Images.IndexOfKey("deleted");
+                        li.BackColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(46, 46, 46) : Color.LightGray;
+                        li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(200, 200, 200) : Color.Black;
+                    }
                 }
             }
 
