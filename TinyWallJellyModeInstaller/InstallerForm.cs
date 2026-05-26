@@ -36,7 +36,7 @@ namespace TinyWallJellyModeInstaller
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Text = "TinyWall Jelly Mode Setup";
+            this.Text = "FoxWall Jelly Mode Setup (v1.0.1)";
             this.BackColor = Color.FromArgb(18, 18, 18);
             this.ForeColor = Color.White;
 
@@ -56,7 +56,7 @@ namespace TinyWallJellyModeInstaller
 
             titleLabel = new Label
             {
-                Text = "TinyWall Custom Jelly Mode Setup",
+                Text = "FoxWall Custom Setup (v1.0.1)",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.White,
                 Location = new Point(15, 12),
@@ -65,7 +65,7 @@ namespace TinyWallJellyModeInstaller
 
             subtitleLabel = new Label
             {
-                Text = "Install or completely remove the custom-themed Jelly Mode firewall config.",
+                Text = "Install or completely remove the custom-themed FoxWall Jelly Mode config (v1.0.1).",
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
                 ForeColor = Color.FromArgb(160, 160, 160),
                 Location = new Point(16, 38),
@@ -179,7 +179,7 @@ namespace TinyWallJellyModeInstaller
         {
             SetControlsEnabled(false);
             logTextBox.Clear();
-            AppendLog("Starting custom Jelly Mode installation...");
+            AppendLog("Starting custom FoxWall 1.0.1 installation...");
 
             await Task.Run(() =>
             {
@@ -288,7 +288,7 @@ namespace TinyWallJellyModeInstaller
                     }
 
                     AppendLog("Installation completed successfully!");
-                    MessageBox.Show("TinyWall Custom Jelly Mode has been successfully installed and started!\n\nEnjoy watching movies on your TV with JellyMode whitelisted!", "Installation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("FoxWall version 1.0.1 (Custom Jelly Mode) has been successfully installed and started!\n\nEnjoy watching movies on your TV with JellyMode whitelisted!", "Installation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
@@ -303,7 +303,7 @@ namespace TinyWallJellyModeInstaller
         private async Task StartUninstall()
         {
             var confirm = MessageBox.Show(
-                "Are you sure you want to completely uninstall TinyWall Jelly Mode?\n\nThis will remove all firewall rules, start tasks, and delete the binaries.",
+                "Are you sure you want to completely uninstall FoxWall Jelly Mode?\n\nThis will remove all firewall rules, start tasks, and delete the binaries.",
                 "Confirm Uninstall",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning
@@ -314,7 +314,7 @@ namespace TinyWallJellyModeInstaller
 
             SetControlsEnabled(false);
             logTextBox.Clear();
-            AppendLog("Starting custom Jelly Mode uninstallation...");
+            AppendLog("Starting custom FoxWall uninstallation...");
 
             await Task.Run(() =>
             {
@@ -387,7 +387,7 @@ namespace TinyWallJellyModeInstaller
                     }
 
                     AppendLog("Uninstall finished successfully!");
-                    MessageBox.Show("TinyWall Jelly Mode has been completely uninstalled and all configuration cleaned.", "Uninstall Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("FoxWall Jelly Mode has been completely uninstalled and all configuration cleaned.", "Uninstall Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {

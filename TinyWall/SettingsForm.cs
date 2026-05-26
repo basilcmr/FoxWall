@@ -83,6 +83,22 @@ namespace pylorak.TinyWall
             this.tableLayoutPanel1.Controls.Add(this.chkEnableDarkMode, 3, 4);
             this.tableLayoutPanel1.SetColumnSpan(this.chkEnableDarkMode, 2);
 
+            // [FoxWall Enhancement] - Relocate Import/Export buttons to the Application Exceptions tab for much better UX
+            this.tabPage4.Controls.Remove(this.btnImport);
+            this.tabPage4.Controls.Remove(this.btnExport);
+
+            this.btnImport.Text = "Import Config";
+            this.btnImport.Location = new Point(566, 265);
+            this.btnImport.Size = new Size(127, 36);
+            this.btnImport.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            this.tabPage3.Controls.Add(this.btnImport);
+
+            this.btnExport.Text = "Export Config";
+            this.btnExport.Location = new Point(566, 307);
+            this.btnExport.Size = new Size(127, 36);
+            this.btnExport.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            this.tabPage3.Controls.Add(this.btnExport);
+
             ThemeManager.Apply(this);
         }
 
@@ -567,7 +583,13 @@ namespace pylorak.TinyWall
             comboLanguages.Items.Add(new IdWithName("ko", "한국어"));
             comboLanguages.Items.Add(new IdWithName("zh", "汉语"));
 
-            lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}", lblVersion.Text, Application.ProductVersion);
+            // [FoxWall Enhancement] - Add FoxWall version line and shift other labels down programmatically to prevent overlap
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.1", this.lblVersion.Text, Application.ProductVersion);
+            this.label12.Top += 15;
+            this.label6.Top += 15;
+            this.lblAboutHomepageLink.Top += 15;
+            this.lblLinkLicense.Top += 15;
+            this.lblLinkAttributions.Top += 15;
 
             InitSettingsUI();
 
