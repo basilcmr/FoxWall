@@ -509,23 +509,9 @@ namespace pylorak.TinyWall
 
         private void btnImport_Click(object sender, EventArgs e)
         {
-            ofd.Filter = string.Format(CultureInfo.CurrentCulture, "{0} (*.tws)|*.tws|{1} (*)|*", Resources.Messages.TinyWallSettingsFileFilter, Resources.Messages.AllFilesFileFilter);
-            if (ofd.ShowDialog(this) == DialogResult.OK)
-            {
-                try
-                {
-                    TmpConfig = SerializationHelper.DeserializeFromFile(ofd.FileName, new ConfigContainer(), true);
-                }
-                catch
-                {
-                    // Fail import.
-                    MessageBox.Show(this, Resources.Messages.ConfigurationImportError, Resources.Messages.TinyWall, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                InitSettingsUI();
-                MessageBox.Show(this, Resources.Messages.ConfigurationHasBeenImported, Resources.Messages.TinyWall, MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
+            // [FoxWall Enhancement] - Start of Custom Import/Merge logic hook
+            HandleImportCustom();
+            // [FoxWall Enhancement] - End of Custom Import/Merge logic hook
         }
 
         private void btnExport_Click(object sender, EventArgs e)
