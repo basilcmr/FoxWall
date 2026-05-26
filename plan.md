@@ -2,9 +2,16 @@
 
 This document outlines the detailed technical design, architectural changes, and security considerations for the five major future enhancements of our modified FoxWall firewall, ordered from easiest to most complex to implement.
 
+### 📊 Roadmap Status Summary
+- `[x]` **1. Import & Export of Application Exceptions List with Settings** (Completed in v1.0.1)
+- `[x]` **2. Advanced Path-Based & Wildcard Whitelisting** (Completed in v1.0.2)
+- `[ ]` **3. Change Name to FoxWall** (Pending)
+- `[x]` **4. Premium Dark Mode UI** (Completed)
+- `[ ]` **5. Dynamic Custom Modes Management** (Pending)
+
 ---
 
-## 1. Import & Export of Application Exceptions List with Settings
+## 1. Import & Export of Application Exceptions List with Settings [COMPLETED]
 **Goal:** Allow users to export their custom whitelisted/blocked application exceptions list alongside general settings to a JSON backup file, and import them with the choice to either **Replace** the existing configuration or **Merge (Add)** new entries without creating duplicates.
 
 ### Architecture & Design Details
@@ -33,7 +40,7 @@ This document outlines the detailed technical design, architectural changes, and
 
 ---
 
-## 2. Advanced Path-Based & Wildcard Whitelisting
+## 2. Advanced Path-Based & Wildcard Whitelisting [COMPLETED]
 **Goal:** Solve whitelisting issues for fast-updating applications (like Discord, Slack, or MS Teams) that constantly change their executables or output directories during updates, without prompting the user repeatedly.
 
 ### Implementation Alternatives & Security Analysis
@@ -102,7 +109,7 @@ To prevent data loss and ensure a completely seamless transition, we will implem
 
 ---
 
-## 4. Premium Dark Mode UI
+## 4. Premium Dark Mode UI [COMPLETED]
 **Goal:** Replace the legacy Windows classic control styling with a modern, harmonious dark theme (glowing purple/magenta accents matching Jellyfin, dark charcoal background, sleek typography, and high-contrast borders).
 
 ### Technical Implementation & Approach
