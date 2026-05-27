@@ -4,6 +4,10 @@ echo        TinyWall Custom Installer Builder
 echo ==============================================
 echo.
 
+:: Close any running installer instances to prevent file lock issues
+taskkill /F /IM TinyWallJellyModeInstaller.exe >nul 2>&1
+taskkill /F /IM FoxWallJellyModeInstaller.exe >nul 2>&1
+
 :: Detect directory structure dynamically
 if exist "%~dp0TinyWall\TinyWall.sln" (
     set "REPO_DIR=%~dp0TinyWall"
