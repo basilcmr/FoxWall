@@ -9,7 +9,7 @@ This document outlines the detailed technical design, architectural changes, and
 - `[ ]` **4. Immediate Network "Panic / Kill Switch"** (Pending - *Difficulty: Low-Medium*)
 - `[ ]` **5. Rule Optimizer & Obsolete Exceptions Cleaner** (Pending - *Difficulty: Low-Medium*)
 - `[ ]` **6. Change Name to FoxWall** (Pending - *Difficulty: Low-Medium*)
-- `[ ]` **7. Application Exceptions Classification & Customizable Columns** (Pending - *Difficulty: Medium*)
+- `[x]` **7. Application Exceptions Classification & Customizable Columns** (Completed in v1.0.4 - *Difficulty: Medium*)
 - `[x]` **8. Advanced Path-Based & Wildcard Whitelisting** (Completed in v1.0.2 - *Difficulty: Medium*)
 - `[ ]` **9. Whitelist Rule "Snoozing" (Time-Limited Exceptions)** (Pending - *Difficulty: Medium*)
 - `[x]` **10. Premium Dark Mode UI** (Completed - *Difficulty: Medium-High*)

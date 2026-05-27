@@ -118,7 +118,7 @@ namespace pylorak.TinyWall
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.4", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.5", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
@@ -143,6 +143,9 @@ namespace pylorak.TinyWall
                     }
                 }
             }
+
+            // 6. Initialize customizable columns
+            InitializeColumnCustomization();
         }
 
         private void HandleOpenFileLocationClick()
@@ -525,6 +528,211 @@ namespace pylorak.TinyWall
                     }
                 }
             }
+        }
+
+        // Custom columns customization support
+        private HeaderControlWrapper? headerWrapper;
+        private ContextMenuStrip? headerContextMenuStrip;
+        private Dictionary<string, int> lastKnownWidths = new();
+        private HashSet<int> hiddenColumns = new();
+
+        private void InitializeColumnCustomization()
+        {
+            // 1. Programmatically insert "columnImportance"
+            var columnImportance = new ColumnHeader
+            {
+                Tag = "colImportance",
+                Text = "Importance",
+                Width = 100
+            };
+            this.listApplications.Columns.Insert(2, columnImportance);
+
+            // 2. Build default lastKnownWidths map
+            var defaultWidths = new Dictionary<string, int>
+            {
+                { "colApplication", 180 },
+                { "colType", 80 },
+                { "colImportance", 100 },
+                { "colDetails", 200 },
+                { "colLastModified", 120 }
+            };
+
+            foreach (ColumnHeader col in this.listApplications.Columns)
+            {
+                string tag = (string)col.Tag;
+                int currentWidth = col.Width;
+
+                // Check settings first
+                if (ActiveConfig.Controller.SettingsFormAppListColumnWidths.TryGetValue(tag, out int savedWidth))
+                {
+                    currentWidth = savedWidth;
+                }
+
+                if (currentWidth > 0)
+                {
+                    lastKnownWidths[tag] = currentWidth;
+                    col.Width = currentWidth;
+                }
+                else
+                {
+                    // Saved as hidden (width 0), default to a non-zero value for when it gets restored
+                    lastKnownWidths[tag] = defaultWidths.ContainsKey(tag) ? defaultWidths[tag] : 100;
+                    col.Width = 0;
+                    hiddenColumns.Add(col.Index);
+                }
+            }
+
+            // 3. Create context menu for header
+            headerContextMenuStrip = new ContextMenuStrip();
+            if (ActiveConfig.Controller != null && ActiveConfig.Controller.EnableDarkMode)
+            {
+                headerContextMenuStrip.Renderer = ThemeManager.GetToolStripRenderer();
+            }
+
+            string[] columnTags = { "colApplication", "colType", "colImportance", "colDetails", "colLastModified" };
+            string[] columnNames = { "Application Name", "Exception Type", "Classification / Importance", "File Path / Details", "Creation Date" };
+
+            for (int i = 0; i < columnTags.Length; i++)
+            {
+                string tag = columnTags[i];
+                string name = columnNames[i];
+
+                var item = new ToolStripMenuItem(name)
+                {
+                    CheckOnClick = false,
+                    Checked = !hiddenColumns.Contains(GetColumnIndexByTag(tag))
+                };
+
+                item.Click += (sender, e) => ToggleColumnVisibility(tag, item);
+
+                if (ActiveConfig.Controller != null && ActiveConfig.Controller.EnableDarkMode)
+                {
+                    item.ForeColor = ThemeManager.TextPrimary;
+                    item.BackColor = ThemeManager.BackgroundColor;
+                }
+
+                headerContextMenuStrip.Items.Add(item);
+            }
+
+            // Hook native subclassing wrapper
+            headerWrapper = new HeaderControlWrapper(this.listApplications, headerContextMenuStrip);
+
+            // Hook ListView events to handle width changes cleanly
+            this.listApplications.ColumnWidthChanging += ListApplications_ColumnWidthChanging;
+            this.listApplications.ColumnWidthChanged += ListApplications_ColumnWidthChanged;
+        }
+
+        private int GetColumnIndexByTag(string tag)
+        {
+            for (int i = 0; i < this.listApplications.Columns.Count; i++)
+            {
+                if ((string)this.listApplications.Columns[i].Tag == tag)
+                    return i;
+            }
+            return -1;
+        }
+
+        private void ToggleColumnVisibility(string colTag, ToolStripMenuItem menuItem)
+        {
+            ColumnHeader? targetCol = null;
+            foreach (ColumnHeader col in listApplications.Columns)
+            {
+                if ((string)col.Tag == colTag)
+                {
+                    targetCol = col;
+                    break;
+                }
+            }
+
+            if (targetCol == null) return;
+
+            bool isChecked = !menuItem.Checked;
+            menuItem.Checked = isChecked;
+
+            if (isChecked)
+            {
+                // Show column: restore last known non-zero width
+                if (lastKnownWidths.TryGetValue(colTag, out int savedWidth) && savedWidth > 0)
+                {
+                    targetCol.Width = savedWidth;
+                }
+                else
+                {
+                    targetCol.Width = 100; // default backup
+                }
+                hiddenColumns.Remove(targetCol.Index);
+            }
+            else
+            {
+                // Hide column: save current width if non-zero, then set to 0
+                if (targetCol.Width > 0)
+                {
+                    lastKnownWidths[colTag] = targetCol.Width;
+                }
+                targetCol.Width = 0;
+                hiddenColumns.Add(targetCol.Index);
+            }
+
+            // Immediately refresh list
+            listApplications.Refresh();
+        }
+
+        private void ListApplications_ColumnWidthChanging(object? sender, ColumnWidthChangingEventArgs e)
+        {
+            if (hiddenColumns.Contains(e.ColumnIndex))
+            {
+                e.Cancel = true;
+                e.NewWidth = 0;
+            }
+        }
+
+        private void ListApplications_ColumnWidthChanged(object? sender, ColumnWidthChangedEventArgs e)
+        {
+            if (e.ColumnIndex >= 0 && e.ColumnIndex < this.listApplications.Columns.Count)
+            {
+                ColumnHeader col = this.listApplications.Columns[e.ColumnIndex];
+                string tag = (string)col.Tag;
+                if (col.Width > 0)
+                {
+                    lastKnownWidths[tag] = col.Width;
+                }
+            }
+        }
+    }
+
+    // Subclasses ListView header natively to intercept right-clicks safely
+    internal class HeaderControlWrapper : NativeWindow
+    {
+        private readonly ListView listView;
+        private readonly ContextMenuStrip contextMenu;
+
+        private const int LVM_GETHEADER = 0x1000 + 31;
+        private const int WM_CONTEXTMENU = 0x007B;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        public HeaderControlWrapper(ListView listView, ContextMenuStrip contextMenu)
+        {
+            this.listView = listView;
+            this.contextMenu = contextMenu;
+
+            IntPtr headerHandle = SendMessage(listView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
+            if (headerHandle != IntPtr.Zero)
+            {
+                this.AssignHandle(headerHandle);
+            }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_CONTEXTMENU)
+            {
+                Point pos = Cursor.Position;
+                contextMenu.Show(pos);
+                return; // Consume message
+            }
+            base.WndProc(ref m);
         }
     }
 }

@@ -241,22 +241,26 @@ namespace pylorak.TinyWall
                 case SubjectType.Executable:
                     li.Text = exeSubj!.ExecutableName;
                     li.SubItems.Add(Resources.Messages.SubjectTypeExecutable);
+                    li.SubItems.Add(ex.Importance.ToString());
                     li.SubItems.Add(exeSubj.ExecutablePath);
                     break;
                 case SubjectType.Service:
                     li.Text = srvSubj!.ServiceName;
                     li.SubItems.Add(Resources.Messages.SubjectTypeService);
+                    li.SubItems.Add(ex.Importance.ToString());
                     li.SubItems.Add(srvSubj.ExecutablePath);
                     break;
                 case SubjectType.Global:
                     li.Text = Resources.Messages.AllApplications;
                     li.SubItems.Add(Resources.Messages.SubjectTypeGlobal);
+                    li.SubItems.Add(ex.Importance.ToString());
                     li.SubItems.Add(string.Empty);
                     li.ImageIndex = IconList.Images.IndexOfKey("window");
                     break;
                 case SubjectType.AppContainer:
                     li.Text = uwpSubj!.DisplayName;
                     li.SubItems.Add(Resources.Messages.SubjectTypeUwpApp);
+                    li.SubItems.Add(ex.Importance.ToString());
                     li.SubItems.Add(uwpSubj.PublisherId + ", " + uwpSubj.Publisher);
                     li.ImageIndex = IconList.Images.IndexOfKey("store");
                     break;
@@ -269,6 +273,10 @@ namespace pylorak.TinyWall
             {
                 li.BackColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(92, 30, 30) : Color.LightPink;
                 li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.White : Color.Black;
+            }
+            else if (ex.Importance == RuleImportance.Unnecessary)
+            {
+                li.ForeColor = TmpConfig.Controller.EnableDarkMode ? Color.FromArgb(140, 140, 140) : Color.Gray;
             }
 
             if (uwpSubj is not null)

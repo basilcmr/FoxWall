@@ -251,7 +251,10 @@ namespace pylorak.TinyWall
             }
 
             btnOK.Enabled = TmpExceptionSettings[0].Subject.SubjectType != SubjectType.Invalid;
+            UpdateImportanceUI();
         }
+
+        partial void UpdateImportanceUI();
 
         private static string CleanupPortsList(string str)
         {

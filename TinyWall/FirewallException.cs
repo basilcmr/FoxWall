@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
@@ -16,6 +16,15 @@ namespace pylorak.TinyWall
         For_9_Hours = 540,
         For_24_Hours = 1140,
         Invalid
+    }
+
+    public enum RuleImportance
+    {
+        Unclassified = 0,
+        Critical = 1,
+        Important = 2,
+        Optional = 3,
+        Unnecessary = 4
     }
 
     [DataContract(Namespace = "TinyWall")]
@@ -41,10 +50,14 @@ namespace pylorak.TinyWall
         [DataMember(EmitDefaultValue = false)]
         public bool ChildProcessesInherit { get; set; }
 
+        [DataMember(EmitDefaultValue = false)]
+        public RuleImportance Importance { get; set; } = RuleImportance.Unclassified;
+
         public FirewallExceptionV3(ExceptionSubject subject, ExceptionPolicy policy)
         {
             Timer = AppExceptionTimer.Permanent;
             CreationDate = DateTime.Now;
+            Importance = RuleImportance.Unclassified;
             RegenerateId();
 
             Subject = subject;
