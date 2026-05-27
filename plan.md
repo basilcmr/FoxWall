@@ -6,13 +6,18 @@ This document outlines the detailed technical design, architectural changes, and
 - `[x]` **1. Import & Export of Application Exceptions List with Settings** (Completed in v1.0.1 - *Difficulty: Very Low*)
 - `[ ]` **2. Direct Google Search Verification Option** (Pending - *Difficulty: Very Low*)
 - `[ ]` **3. Clipboard Copy with Column Selection Dialogue** (Pending - *Difficulty: Low*)
-- `[ ]` **4. Change Name to FoxWall** (Pending - *Difficulty: Low*)
-- `[ ]` **5. Application Exceptions Classification & Customizable Columns** (Pending - *Difficulty: Low-Medium / Medium*)
-- `[x]` **6. Advanced Path-Based & Wildcard Whitelisting** (Completed in v1.0.2 - *Difficulty: Medium*)
-- `[x]` **7. Premium Dark Mode UI** (Completed - *Difficulty: Medium-High*)
-- `[ ]` **8. Dynamic Custom Modes Management** (Pending - *Difficulty: High*)
-- `[ ]` **9. Auto-Learn Mode with Interactive Prompts** (Pending - *Difficulty: High / Very High*)
-- `[ ]` **10. FoxWall Security Monitor Dashboard** (Pending - *Difficulty: Extremely High*)
+- `[ ]` **4. Immediate Network "Panic / Kill Switch"** (Pending - *Difficulty: Low-Medium*)
+- `[ ]` **5. Rule Optimizer & Obsolete Exceptions Cleaner** (Pending - *Difficulty: Low-Medium*)
+- `[ ]` **6. Change Name to FoxWall** (Pending - *Difficulty: Low-Medium*)
+- `[ ]` **7. Application Exceptions Classification & Customizable Columns** (Pending - *Difficulty: Medium*)
+- `[x]` **8. Advanced Path-Based & Wildcard Whitelisting** (Completed in v1.0.2 - *Difficulty: Medium*)
+- `[ ]` **9. Whitelist Rule "Snoozing" (Time-Limited Exceptions)** (Pending - *Difficulty: Medium*)
+- `[x]` **10. Premium Dark Mode UI** (Completed - *Difficulty: Medium-High*)
+- `[ ]` **11. Dynamic Custom Modes Management** (Pending - *Difficulty: High*)
+- `[ ]` **12. Auto-Learn Mode with Interactive Prompts** (Pending - *Difficulty: High / Very High*)
+- `[ ]` **13. Geo-IP Real-Time Map & Flag Auditing** (Pending - *Difficulty: High / Very High*)
+- `[ ]` **14. Parent-Process Security Guard (Anti-Exploit Blocker)** (Pending - *Difficulty: Very High / Extremely High*)
+- `[ ]` **15. FoxWall Security Monitor Dashboard** (Pending - *Difficulty: Extremely High*)
 
 ---
 
@@ -110,8 +115,51 @@ This document outlines the detailed technical design, architectural changes, and
 
 ---
 
-## 4. Change Name to FoxWall [PENDING]
-**Difficulty:** Low
+## 4. Immediate Network "Panic / Kill Switch" [PENDING]
+**Difficulty:** Low-Medium
+**Goal:** Implement a quick-access global network block toggle. Clicking the "Panic / Kill Switch" in the tray context menu or the monitoring panel instantly stops all network communication on all adapters and forcefully terminates all active socket connections immediately.
+
+### Architectural Changes & Implementation Plan
+
+#### 1. WFP Global Override Rule
+- Register a high-priority persistent block-all filter weight in `TinyWallService.cs` under a specific key (e.g. `KillSwitchActive`).
+- When activated, this WFP rule resides at the absolute top of the sublayer hierarchy, bypassing all whitelists/rules except loopback.
+
+#### 2. Socket Termination Logic
+- Create a native utility wrapper in `pylorak.Windows` using IP Helper APIs (`iphlpapi.dll`).
+- Call `SetTcpEntry` programmatically inside a loop over the active TCP connection table to drop every active connection (`MIB_TCP_STATE_DELETE`) immediately.
+
+#### 3. Tray Context Menu Integration
+- Add a glowing, red-accented **"PANIC / KILL SWITCH"** toggle to the tray controller context menu.
+- Display a striking red flashing tray icon and notification when the Kill Switch is active to prevent user confusion.
+
+---
+
+## 5. Rule Optimizer & Obsolete Exceptions Cleaner [PENDING]
+**Difficulty:** Low-Medium
+**Goal:** Provide an auditing toolkit to clean up rule bloat. The optimizer scans all configured custom whitelists, identifies dead paths (files no longer on disk), duplicate rules, and redundant port settings, presenting a clean review checklist to delete obsolete rules.
+
+### Architectural Changes & Implementation Plan
+
+#### 1. Rules Auditor Engine (`RulesAuditor.cs`)
+- Build an isolated analyzer class to traverse the loaded `AppExceptions` list.
+- Check each file path: flag paths containing no wildcards where `File.Exists(path)` returns false.
+- Flag redundancies: rules sharing the same executable path, where one rule fully covers the ports/protocols of another.
+
+#### 2. Audit Dashboard UI (`OptimizerForm.cs`)
+- Create an elegant dark WinForms report form listing:
+  - Dead Path exceptions (with paths grayed out).
+  - Overlapping / Redundant rule exception groups.
+- Allow the user to check/uncheck suggested optimizations.
+
+#### 3. Transactional Clean-Up Execution
+- Upon clicking "Apply Optimization", purge checked exceptions from the active profile.
+- Perform a atomic WCF save transaction to update the local service configuration database and refresh WFP instantly.
+
+---
+
+## 6. Change Name to FoxWall [PENDING]
+**Difficulty:** Low-Medium
 **Goal:** Replace the Name TinyWall to FoxWall in the entire solution. License terms do not allow using the official "TinyWall" trademark name for custom forks. We need to rename the application, settings, window titles, folders, and registry entries to "FoxWall" while maintaining full, automatic backward compatibility to read existing "TinyWall" configurations so a reinstall or update preserves all custom rules.
 
 ### Rebranding & Migration Architectural Plan
@@ -153,8 +201,8 @@ To prevent data loss and ensure a completely seamless transition, we will implem
 
 ---
 
-## 5. Application Exceptions Classification & Customizable Columns [PENDING]
-**Difficulty:** Low-Medium / Medium
+## 7. Application Exceptions Classification & Customizable Columns [PENDING]
+**Difficulty:** Medium
 **Goal:** Provide the ability to classify application exception rules with custom priority/importance tags (e.g. `Critical`, `Important`, `Optional`, `Unnecessary`, or `Unclassified`) to help users easily identify and filter non-essential system or background processes (like `smartscreen.exe` or telemetry processes) that can be safely disabled or blocked. Additionally, support customizable/configurable columns in the Exception List view.
 
 ### Architectural Changes & Implementation Plan
@@ -193,7 +241,7 @@ To prevent data loss and ensure a completely seamless transition, we will implem
 
 ---
 
-## 6. Advanced Path-Based & Wildcard Whitelisting [COMPLETED]
+## 8. Advanced Path-Based & Wildcard Whitelisting [COMPLETED]
 **Difficulty:** Medium
 **Goal:** Solve whitelisting issues for fast-updating applications (like Discord, Slack, or MS Teams) that constantly change their executables or output directories during updates, without prompting the user repeatedly.
 
@@ -221,7 +269,24 @@ We implemented **Alternative A combined with Digital Signature Lock** to ensure 
 
 ---
 
-## 7. Premium Dark Mode UI [COMPLETED]
+## 9. Whitelist Rule "Snoozing" (Time-Limited Exceptions) [PENDING]
+**Difficulty:** Medium
+**Goal:** Enable time-decaying whitelists. Users can whitelist an application temporarily (e.g. for "30 Minutes", "2 Hours", or "Until System Reboot"). When the time expires, FoxWall's background service automatically locks the application out from the network.
+
+### Architectural Changes & Implementation Plan
+
+#### 1. Extended Rule Lifecycle Properties
+- Add an optional `ExpirationTimestamp` (nullable `DateTime`) property to `FirewallExceptionV3`.
+- Set `ExpirationTimestamp` programmatically when creating rules via the Snooze option dropdown in the whitelisting prompt dialog.
+
+#### 2. Service Monitoring Loop
+- Maintain a WCF-driven background cleanup runner in `TinyWallService.cs` (e.g., within `MinuteTimer_Tick`).
+- Check active exceptions list: if any rule has an `ExpirationTimestamp` that is past the current system local time, remove the entry from the active profile.
+- Re-install WFP firewall filters inside a single transaction to execute a seamless, silent cleanup without service interruption.
+
+---
+
+## 10. Premium Dark Mode UI [COMPLETED]
 **Difficulty:** Medium-High
 **Goal:** Replace the legacy Windows classic control styling with a modern, harmonious dark theme (glowing purple/magenta accents matching Jellyfin, dark charcoal background, sleek typography, and high-contrast borders).
 
@@ -242,7 +307,7 @@ WinForms does not support native dark mode out of the box. We achieved this via 
 
 ---
 
-## 8. Dynamic Custom Modes Management [PENDING]
+## 11. Dynamic Custom Modes Management [PENDING]
 **Difficulty:** High
 **Goal:** Allow users to create, configure, and delete their own custom Firewall Modes (e.g., *WorkMode*, *GameMode*) with unique whitelisting rulesets directly from the Settings UI and access them with two clicks from the system tray.
 
@@ -260,7 +325,7 @@ To make firewall modes dynamic instead of hardcoded in a static C# `enum`:
 
 ---
 
-## 9. Auto-Learn Mode with Interactive Prompts [PENDING]
+## 12. Auto-Learn Mode with Interactive Prompts [PENDING]
 **Difficulty:** High / Very High
 **Goal:** Replace passive, silent learning modes with an active, interactive whitelisting assistant. When an unrecognized process attempts to establish a network connection, the firewall suspends/buffers the transaction, captures detailed execution context, and alerts the user via a sleek, interactive notification modal requesting permission.
 
@@ -293,7 +358,47 @@ To make firewall modes dynamic instead of hardcoded in a static C# `enum`:
 
 ---
 
-## 10. FoxWall Security Monitor Dashboard [PENDING]
+## 13. Geo-IP Real-Time Map & Flag Auditing [PENDING]
+**Difficulty:** High / Very High
+**Goal:** Track the geographical locations of network requests. The Security Monitor resolves remote destination IPs to their country of origin, displaying country flag icons, details, and aggregated geographic bandwidth charts to visually highlight rogue off-shore telemetry transfers.
+
+### Architectural Changes & Implementation Plan
+
+#### 1. Embedded Geo-IP Database Integration
+- Package a lightweight, highly optimized local Geo-IP database (e.g. MaxMind GeoLite2 Country binary database `.mmdb` format) inside the application directory.
+- Build a local lookup helper `GeoIPResolver.cs` that performs fast, zero-latency binary IP-to-Country searches on background threads.
+
+#### 2. Live Geo Auditing in Monitor Feed
+- Add flag icons and Country Name columns to the Security Monitor Live Grid.
+- Run queries asynchronously: as connection records stream in, queue their remote IPs in a lookup worker thread, updating the UI elements once resolved to prevent GUI freezes.
+
+#### 3. Visual Regional Metrics Dashboard
+- Add a geographic breakdown chart (e.g., a styled donut chart or vertical bars) mapping total bandwidth consumed by geographic regions (e.g. USA, China, Ireland, etc.).
+
+---
+
+## 14. Parent-Process Security Guard (Anti-Exploit Blocker) [PENDING]
+**Difficulty:** Very High / Extremely High
+**Goal:** Add context-aware exploit mitigation. FoxWall evaluates process creation trees to prevent compromised applications (e.g., browsers, MS Word, or PDF readers) from spawning command shells (`cmd.exe`, `powershell.exe`) that bypass standard whitelists.
+
+### Architectural Changes & Implementation Plan
+
+#### 1. Real-Time Process Tree Tracker
+- Create an asynchronous WMI process watcher or hook into native ETW (Event Tracing for Windows) process trace logs.
+- Map and maintain an active memory tree representation of parent-child PID relationships.
+
+#### 2. Anomaly Exploitation Heuristics Engine
+- Define a dictionary of high-risk parent-child mappings:
+  - *Parents:* Web browsers (`chrome.exe`, `msedge.exe`), document readers (`winword.exe`, `acrord32.exe`, `excel.exe`).
+  - *Blocked Shells:* `cmd.exe`, `powershell.exe`, `wscript.exe`, `mshta.exe`.
+- If an outbound connection is initiated by a blocked shell, check the mapped process tree. If its parent tree links back to a high-risk application, intercept and forcefully block the network transaction.
+
+#### 3. Security Warning Dialog
+- Trigger a specialized notification highlighting the parent-child attack vector (e.g., "Exploit Blocked: MS Word attempted to connect to the internet via hidden PowerShell shell").
+
+---
+
+## 15. FoxWall Security Monitor Dashboard [PENDING]
 **Difficulty:** Extremely High
 **Goal:** Design and build a standalone, dedicated Security Monitor window separate from general settings. This visual dashboard monitors, tracks, and charts all internet traffic in real-time, displaying live bandwidth usage, dynamic graphs, payload exfiltration auditing, and behavioral anti-keylogger heuristics.
 
