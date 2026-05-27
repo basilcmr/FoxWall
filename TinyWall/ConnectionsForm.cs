@@ -212,11 +212,46 @@ namespace pylorak.TinyWall
             // Add items to list
             list.BeginUpdate();
             list.Items.Clear();
-            list.Items.AddRange(itemColl.ToArray());
+
+            // [FoxWall Enhancement] - Filter by process path / name if a filter is active
+            var finalItems = itemColl;
+            if (!string.IsNullOrEmpty(PathFilter))
+            {
+                finalItems = new List<ListViewItem>();
+                foreach (var item in itemColl)
+                {
+                    var pi = item.Tag as ProcessInfo;
+                    if (pi != null)
+                    {
+                        string name = pi.Package.HasValue ? pi.Package.Value.Name : System.IO.Path.GetFileName(pi.Path);
+                        bool match = (pi.Path != null && pi.Path.IndexOf(PathFilter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                                     (name != null && name.IndexOf(PathFilter, StringComparison.OrdinalIgnoreCase) >= 0);
+
+                        if (!match && pi.Services != null)
+                        {
+                            foreach (var s in pi.Services)
+                            {
+                                if (s != null && s.IndexOf(PathFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    match = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (match)
+                        {
+                            finalItems.Add(item);
+                        }
+                    }
+                }
+            }
+
+            list.Items.AddRange(finalItems.ToArray());
             list.EndUpdate();
 
             // Load process icons asynchronously
-            IconScanner.Rescan(itemColl, list, IconList);
+            IconScanner.Rescan(finalItems, list, IconList);
         }
 
         private void ConstructListItem(List<ListViewItem> itemColl, ProcessInfo e, string protocol, IPEndPoint localEP, IPEndPoint remoteEP, string state, DateTime ts, RuleDirection dir)

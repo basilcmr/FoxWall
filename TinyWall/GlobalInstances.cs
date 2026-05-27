@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Diagnostics.CodeAnalysis;
 using pylorak.TinyWall.DatabaseClasses;
@@ -11,6 +11,7 @@ namespace pylorak.TinyWall
         internal static AppDatabase AppDatabase;
         [AllowNull]
         internal static Controller Controller;
+        internal static TinyWallController? TinyWallControllerInstance;
         internal static Guid ClientChangeset;
         internal static Guid ServerChangeset;
 

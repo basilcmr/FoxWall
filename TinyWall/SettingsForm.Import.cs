@@ -56,26 +56,69 @@ namespace pylorak.TinyWall
 
             // 3. Programmatically create and add ContextMenuStrip for listApplications
             var listContextMenu = new ContextMenuStrip();
+            
+            var mnuOpenFileLocation = new ToolStripMenuItem("Open File Location", null);
+            mnuOpenFileLocation.Click += (s, e) => this.HandleOpenFileLocationClick();
+            
+            var mnuVerifySignature = new ToolStripMenuItem("Verify Digital Signature...", null);
+            mnuVerifySignature.Click += (s, e) => this.HandleVerifySignatureClick();
+            
+            var mnuVirusTotal = new ToolStripMenuItem("Check Hash on VirusTotal...", null);
+            mnuVirusTotal.Click += (s, e) => this.HandleVirusTotalClick();
+            
             var mnuSearchGoogle = new ToolStripMenuItem("Search on Google for safety...", GlobalInstances.WebBtnIcon);
             mnuSearchGoogle.Click += (s, e) => this.HandleGoogleSearchClick();
             
+            var mnuQuickPolicy = new ToolStripMenuItem("Quick Toggle Policy", null);
+            var mnuQuickAllow = new ToolStripMenuItem("Quick Allow (Unrestricted)", GlobalInstances.ApplyBtnIcon);
+            mnuQuickAllow.Click += (s, e) => this.HandleQuickPolicyClick(PolicyType.Unrestricted);
+            var mnuQuickBlock = new ToolStripMenuItem("Quick Block (Hard Block)", GlobalInstances.CancelBtnIcon);
+            mnuQuickBlock.Click += (s, e) => this.HandleQuickPolicyClick(PolicyType.HardBlock);
+            mnuQuickPolicy.DropDownItems.Add(mnuQuickAllow);
+            mnuQuickPolicy.DropDownItems.Add(mnuQuickBlock);
+            
+            var mnuAuditSockets = new ToolStripMenuItem("Audit Active Sockets...", GlobalInstances.UpdateBtnIcon);
+            mnuAuditSockets.Click += (s, e) => this.HandleAuditSocketsClick();
+
             var mnuCopyToClipboard = new ToolStripMenuItem("Copy to Clipboard...", GlobalInstances.ExportBtnIcon);
             mnuCopyToClipboard.Click += (s, e) => this.HandleCopyToClipboardClick();
 
+            listContextMenu.Items.Add(mnuOpenFileLocation);
+            listContextMenu.Items.Add(mnuVerifySignature);
+            listContextMenu.Items.Add(mnuVirusTotal);
             listContextMenu.Items.Add(mnuSearchGoogle);
+            listContextMenu.Items.Add(new ToolStripSeparator());
+            listContextMenu.Items.Add(mnuQuickPolicy);
+            listContextMenu.Items.Add(mnuAuditSockets);
             listContextMenu.Items.Add(new ToolStripSeparator());
             listContextMenu.Items.Add(mnuCopyToClipboard);
 
             listContextMenu.Opening += (s, e) =>
             {
-                mnuSearchGoogle.Enabled = this.listApplications.SelectedIndices.Count == 1;
-                mnuCopyToClipboard.Enabled = this.listApplications.SelectedIndices.Count > 0;
+                int count = this.listApplications.SelectedIndices.Count;
+                bool isSingle = count == 1;
+                
+                bool isFileSubj = false;
+                if (isSingle)
+                {
+                    ListViewItem li = FilteredExceptionItems[this.listApplications.SelectedIndices[0]];
+                    FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+                    isFileSubj = ex.Subject is ExecutableSubject || ex.Subject is ServiceSubject;
+                }
+                
+                mnuOpenFileLocation.Enabled = isSingle && isFileSubj;
+                mnuVerifySignature.Enabled = isSingle && isFileSubj;
+                mnuVirusTotal.Enabled = isSingle && isFileSubj;
+                mnuSearchGoogle.Enabled = isSingle;
+                mnuQuickPolicy.Enabled = count > 0;
+                mnuAuditSockets.Enabled = isSingle && isFileSubj;
+                mnuCopyToClipboard.Enabled = count > 0;
             };
 
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.3", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.4", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
@@ -91,6 +134,188 @@ namespace pylorak.TinyWall
             {
                 item.ForeColor = ThemeManager.TextPrimary;
                 item.BackColor = ThemeManager.BackgroundColor;
+                if (item is ToolStripDropDownItem dropDownItem && dropDownItem.HasDropDownItems)
+                {
+                    foreach (ToolStripItem subItem in dropDownItem.DropDownItems)
+                    {
+                        subItem.ForeColor = ThemeManager.TextPrimary;
+                        subItem.BackColor = ThemeManager.BackgroundColor;
+                    }
+                }
+            }
+        }
+
+        private void HandleOpenFileLocationClick()
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string rawPath = "";
+            if (ex.Subject is ExecutableSubject exeSubj)
+                rawPath = exeSubj.ExecutablePath;
+            else if (ex.Subject is ServiceSubject srvSubj)
+                rawPath = srvSubj.ExecutablePath;
+
+            if (string.IsNullOrEmpty(rawPath)) return;
+
+            try
+            {
+                string resolvedPath = WildcardHelper.ResolveWildcardPath(rawPath);
+                if (System.IO.File.Exists(resolvedPath))
+                {
+                    Process.Start("explorer.exe", $"/select,\"{resolvedPath}\"");
+                }
+                else
+                {
+                    MessageBox.Show(this, "The file does not exist or the wildcard could not be resolved:\n" + resolvedPath, "FoxWall", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not open file location: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleVerifySignatureClick()
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string rawPath = "";
+            if (ex.Subject is ExecutableSubject exeSubj)
+                rawPath = exeSubj.ExecutablePath;
+            else if (ex.Subject is ServiceSubject srvSubj)
+                rawPath = srvSubj.ExecutablePath;
+
+            if (string.IsNullOrEmpty(rawPath)) return;
+
+            try
+            {
+                string resolvedPath = WildcardHelper.ResolveWildcardPath(rawPath);
+                if (!System.IO.File.Exists(resolvedPath))
+                {
+                    MessageBox.Show(this, "The file does not exist or the wildcard could not be resolved:\n" + resolvedPath, "FoxWall", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var tempSubj = new ExecutableSubject(resolvedPath);
+                bool isSigned = tempSubj.IsSigned;
+                bool certValid = tempSubj.CertValid;
+                string certSubject = tempSubj.CertSubject ?? "Unknown / Unsigned";
+
+                using (var sigForm = new SignatureDetailsForm(resolvedPath, isSigned, certValid, certSubject))
+                {
+                    sigForm.ShowDialog(this);
+                }
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not verify digital signature: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleVirusTotalClick()
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string rawPath = "";
+            if (ex.Subject is ExecutableSubject exeSubj)
+                rawPath = exeSubj.ExecutablePath;
+            else if (ex.Subject is ServiceSubject srvSubj)
+                rawPath = srvSubj.ExecutablePath;
+
+            if (string.IsNullOrEmpty(rawPath)) return;
+
+            try
+            {
+                string resolvedPath = WildcardHelper.ResolveWildcardPath(rawPath);
+                if (!System.IO.File.Exists(resolvedPath))
+                {
+                    MessageBox.Show(this, "The file does not exist or the wildcard could not be resolved:\n" + resolvedPath, "FoxWall", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string hash = Hasher.HashFileSha1(resolvedPath);
+                if (!string.IsNullOrEmpty(hash))
+                {
+                    string url = $"https://www.virustotal.com/gui/search/{hash}";
+                    var psi = new ProcessStartInfo(url) { UseShellExecute = true };
+                    Process.Start(psi)?.Dispose();
+                }
+                else
+                {
+                    MessageBox.Show(this, "Failed to compute SHA-1 hash for the selected file.", "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not open VirusTotal: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleQuickPolicyClick(PolicyType policyType)
+        {
+            if (listApplications.SelectedIndices.Count == 0) return;
+
+            try
+            {
+                foreach (int idx in listApplications.SelectedIndices)
+                {
+                    ListViewItem li = FilteredExceptionItems[idx];
+                    FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+                    if (policyType == PolicyType.HardBlock)
+                    {
+                        ex.Policy = HardBlockPolicy.Instance;
+                    }
+                    else if (policyType == PolicyType.Unrestricted)
+                    {
+                        ex.Policy = new UnrestrictedPolicy() { LocalNetworkOnly = false };
+                    }
+                }
+
+                RebuildExceptionsList();
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not update policy: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleAuditSocketsClick()
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string rawPath = "";
+            if (ex.Subject is ExecutableSubject exeSubj)
+                rawPath = exeSubj.ExecutablePath;
+            else if (ex.Subject is ServiceSubject srvSubj)
+                rawPath = srvSubj.ExecutablePath;
+
+            if (string.IsNullOrEmpty(rawPath)) return;
+
+            try
+            {
+                string resolvedPath = WildcardHelper.ResolveWildcardPath(rawPath);
+                using (var connForm = new ConnectionsForm(GlobalInstances.TinyWallControllerInstance!))
+                {
+                    connForm.PathFilter = resolvedPath;
+                    connForm.ShowDialog(this);
+                }
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not open socket auditor: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

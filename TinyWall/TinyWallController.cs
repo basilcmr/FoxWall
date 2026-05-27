@@ -344,6 +344,7 @@ namespace pylorak.TinyWall
 
         public TinyWallController(CmdLineArgs opts)
         {
+            GlobalInstances.TinyWallControllerInstance = this;
             this.StartupOpts = opts;
 
             ActiveConfig.Controller = ControllerSettings.Load();

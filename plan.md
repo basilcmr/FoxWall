@@ -4,7 +4,7 @@ This document outlines the detailed technical design, architectural changes, and
 
 ### 📊 Roadmap Status Summary
 - `[x]` **1. Import & Export of Application Exceptions List with Settings** (Completed in v1.0.1 - *Difficulty: Very Low*)
-- `[x]` **2. Direct Google Search Verification Option** (Completed in v1.0.3 - *Difficulty: Very Low*)
+- `[x]` **2. Context-Menu Verification & Auditing Toolkit** (Completed in v1.0.4 - *Difficulty: Low-Medium*)
 - `[x]` **3. Clipboard Copy with Column Selection Dialogue** (Completed in v1.0.3 - *Difficulty: Low*)
 - `[ ]` **4. Immediate Network "Panic / Kill Switch"** (Pending - *Difficulty: Low-Medium*)
 - `[ ]` **5. Rule Optimizer & Obsolete Exceptions Cleaner** (Pending - *Difficulty: Low-Medium*)
@@ -51,33 +51,48 @@ This document outlines the detailed technical design, architectural changes, and
 
 ---
 
-## 2. Direct Google Search Verification Option [COMPLETED]
-**Difficulty:** Very Low
-**Goal:** Allow users to instantly investigate any unknown or suspicious executable in their Exception List on Google. With a simple right-click, the firewall launches the default system web browser with a pre-formatted query designed to immediately retrieve community safety reviews, publisher legitimacy checks, and malware reports.
+## 2. Context-Menu Verification & Auditing Toolkit [COMPLETED]
+**Difficulty:** Low-Medium
+**Goal:** Empower users to easily inspect, verify, and audit whitelisted or blocked applications directly from the exceptions list with standard right-click actions:
+1. **Open File Location:** Open Windows Explorer highlighting the target executable file.
+2. **Verify Digital Signature:** Instantly verify and present the Authenticode signature state and publisher info in a premium styled WinForms dialogue.
+3. **Check Hash on VirusTotal:** Hash the file locally (SHA-1) and launch the default system browser directly searching for the threat analysis.
+4. **Google Search Verification:** Direct safety verification search on Google.
+5. **Audit Active Sockets:** Open the Connections Form pre-filtered only to show the selected application's sockets.
+6. **Quick Toggle Policy:** Immediate rule toggling ("Quick Allow (Unrestricted)" / "Quick Block (Hard Block)") for single or multiple selected rules.
 
 ### Architectural Changes & Implementation Plan
 
-#### 1. Context Menu Dynamically Binding
-- In [SettingsForm.Import.cs](file:///d:/Giraf%20Dropbox/Giraf%20Creatives/zOo%20Backup/Jellyfin%20Net%20block/TinyWall/TinyWall/SettingsForm.Import.cs), programmatically construct a `ContextMenuStrip` context menu for the `listApplications` ListView during initialization.
-- Add a new menu option: **"Search on Google for safety..."**.
-- Leverage our `ThemeManager` renderer to styled context menu backgrounds and selections in line with our Dark/Purple premium theme.
+#### 1. Rich Context Menu Initialisation
+- Construct a detailed `ContextMenuStrip` context menu programmatically in [SettingsForm.Import.cs](file:///d:/Giraf%20Dropbox/Giraf%20Creatives/zOo%20Backup/Jellyfin%20Net%20block/TinyWall/TinyWall/SettingsForm.Import.cs).
+- Design a dynamic context enabling hook on the `Opening` event:
+  - If a single row is selected and it is a file subject (Executable or Service): Enable "Open File Location", "Verify Digital Signature", "Check Hash on VirusTotal", and "Audit Active Sockets".
+  - If any count of exceptions is selected: Enable "Quick Toggle Policy" (supporting multi-select allowance or hard blocking on the fly).
 
-#### 2. Right-Click Trigger & Selection Parsing
-- Bind the custom `ContextMenuStrip` directly to `listApplications.ContextMenuStrip`.
-- Wire up a menu-opening event (`Opening`) to verify selection state: enable the search option only when exactly one exception row is highlighted in the grid.
+#### 2. WinExplorer Selection Highlights
+- Retrieve the selected file path, resolve any path wildcards utilizing `WildcardHelper.ResolveWildcardPath(rawPath)`.
+- Fire standard Explorer shell command to highlight the file inside a folder viewport:
+  ```csharp
+  Process.Start("explorer.exe", $"/select,\"{resolvedPath}\"");
+  ```
 
-#### 3. Query Interpolation & Safe Browser Spawning
-- Upon clicking the search item, retrieve the selected `FirewallExceptionV3` entity.
-- Extract the executable name using the `Subject.ToString()` or `Subject.ExecutableName` helper properties.
-- Construct a robust search string designed to avoid generic results and fetch security reviews directly:
-  ```csharp
-  string query = $"is {exeName} safe legitimate or malware virus";
-  string url = "https://www.google.com/search?q=" + Uri.EscapeDataString(query);
-  ```
-- Invoke the standard system shell process to open the user's preferred default web browser:
-  ```csharp
-  Process.Start(new ProcessStartInfo(url) { UseShellExecute = true })?.Dispose();
-  ```
+#### 3. Premium Signature Dialogue (`SignatureDetailsForm.cs`)
+- Implement a custom, DPI-aware dialog inheriting from `Form` and styled elegantly under `ThemeManager.Apply(this)` guidelines.
+- Render dynamic status badges: green for a completely valid certificate, yellow for self-signed or untrusted certificates, and red for unsigned executables.
+- Render read-only text fields detailing the fully resolved path, publisher names, and certificate status details.
+
+#### 4. Local File Hashing & VirusTotal Integration
+- Compute the SHA-1 hash of the resolved file path via the existing `Hasher.HashFileSha1(resolvedPath)` helper.
+- Formulate the lookup URL: `https://www.virustotal.com/gui/search/{hash}` and invoke system shell process securely.
+
+#### 5. Dynamic Connections Filtering
+- Declared a partial property `public string PathFilter { get; set; }` inside a newly segregated `ConnectionsForm.Filter.cs` partial class file.
+- Implement `OnLoad` programmatic layout inserts: if a filter is active, inject a top banner notifying the user, alongside a "Clear Filter" flat button to reset list view filters cleanly.
+- Integrate the filtering pass directly in the core `UpdateList()` method of `ConnectionsForm.cs` right before adding rows to the grid.
+
+#### 6. Quick Policy Updates
+- Toggles selected application rules in the background memory database (`TmpConfig.Service.ActiveProfile.AppExceptions`) dynamically.
+- Automatically invokes `RebuildExceptionsList()` on the fly, instantly updating row backgrounds to hard block colors (e.g. glowing soft-red highlight) or whitelisted colors immediately.
 
 ---
 
