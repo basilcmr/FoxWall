@@ -228,6 +228,48 @@ namespace pylorak.TinyWall
             listApplications_SelectedIndexChanged(listApplications, EventArgs.Empty);
         }
 
+        private static string GetStatusString(FirewallExceptionV3 ex)
+        {
+            switch (ex.Policy.PolicyType)
+            {
+                case PolicyType.HardBlock:
+                    return "Blocked";
+                case PolicyType.Unrestricted:
+                    return "Allowed (Unrestricted)";
+                case PolicyType.TcpUdpOnly:
+                    return "Allowed (Filtered)";
+                case PolicyType.RuleList:
+                    return "Allowed (Rules)";
+                default:
+                    return "Unknown";
+            }
+        }
+
+        private static string GetTimerString(FirewallExceptionV3 ex)
+        {
+            switch (ex.Timer)
+            {
+                case AppExceptionTimer.Permanent:
+                    return "Permanent";
+                case AppExceptionTimer.Until_Reboot:
+                    return "Until Reboot";
+                case AppExceptionTimer.For_5_Minutes:
+                    return "5 Min";
+                case AppExceptionTimer.For_30_Minutes:
+                    return "30 Min";
+                case AppExceptionTimer.For_1_Hour:
+                    return "1 Hour";
+                case AppExceptionTimer.For_4_Hours:
+                    return "4 Hours";
+                case AppExceptionTimer.For_9_Hours:
+                    return "9 Hours";
+                case AppExceptionTimer.For_24_Hours:
+                    return "24 Hours";
+                default:
+                    return ex.Timer.ToString();
+            }
+        }
+
         private ListViewItem ListItemFromAppException(FirewallExceptionV3 ex, UwpPackageList packageList)
         {
             var li = new ListViewItem() { Tag = ex };
@@ -242,18 +284,27 @@ namespace pylorak.TinyWall
                     li.Text = exeSubj!.ExecutableName;
                     li.SubItems.Add(Resources.Messages.SubjectTypeExecutable);
                     li.SubItems.Add(ex.Importance.ToString());
+                    li.SubItems.Add(GetStatusString(ex));
+                    li.SubItems.Add(GetTimerString(ex));
+                    li.SubItems.Add(ex.ChildProcessesInherit ? "Yes" : "No");
                     li.SubItems.Add(exeSubj.ExecutablePath);
                     break;
                 case SubjectType.Service:
                     li.Text = srvSubj!.ServiceName;
                     li.SubItems.Add(Resources.Messages.SubjectTypeService);
                     li.SubItems.Add(ex.Importance.ToString());
+                    li.SubItems.Add(GetStatusString(ex));
+                    li.SubItems.Add(GetTimerString(ex));
+                    li.SubItems.Add(ex.ChildProcessesInherit ? "Yes" : "No");
                     li.SubItems.Add(srvSubj.ExecutablePath);
                     break;
                 case SubjectType.Global:
                     li.Text = Resources.Messages.AllApplications;
                     li.SubItems.Add(Resources.Messages.SubjectTypeGlobal);
                     li.SubItems.Add(ex.Importance.ToString());
+                    li.SubItems.Add(GetStatusString(ex));
+                    li.SubItems.Add(GetTimerString(ex));
+                    li.SubItems.Add(ex.ChildProcessesInherit ? "Yes" : "No");
                     li.SubItems.Add(string.Empty);
                     li.ImageIndex = IconList.Images.IndexOfKey("window");
                     break;
@@ -261,6 +312,9 @@ namespace pylorak.TinyWall
                     li.Text = uwpSubj!.DisplayName;
                     li.SubItems.Add(Resources.Messages.SubjectTypeUwpApp);
                     li.SubItems.Add(ex.Importance.ToString());
+                    li.SubItems.Add(GetStatusString(ex));
+                    li.SubItems.Add(GetTimerString(ex));
+                    li.SubItems.Add(ex.ChildProcessesInherit ? "Yes" : "No");
                     li.SubItems.Add(uwpSubj.PublisherId + ", " + uwpSubj.Publisher);
                     li.ImageIndex = IconList.Images.IndexOfKey("store");
                     break;

@@ -8,6 +8,10 @@ namespace pylorak.TinyWall
     {
         internal CheckBox ChkApplication { get; private set; }
         internal CheckBox ChkType { get; private set; }
+        internal CheckBox ChkImportance { get; private set; }
+        internal CheckBox ChkStatus { get; private set; }
+        internal CheckBox ChkLifetime { get; private set; }
+        internal CheckBox ChkInherit { get; private set; }
         internal CheckBox ChkDetails { get; private set; }
         internal CheckBox ChkLastModified { get; private set; }
 
@@ -20,7 +24,7 @@ namespace pylorak.TinyWall
         internal CopySelectionForm(bool hasSelection)
         {
             this.Text = "Copy to Clipboard Options";
-            this.Size = new Size(340, 310);
+            this.Size = new Size(340, 330);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -32,16 +36,24 @@ namespace pylorak.TinyWall
             {
                 Text = "Include Columns",
                 Location = new Point(12, 12),
-                Size = new Size(300, 110)
+                Size = new Size(300, 135)
             };
 
-            ChkApplication = new CheckBox { Text = "Application Name", Checked = true, Location = new Point(15, 25), Size = new Size(130, 24) };
-            ChkType = new CheckBox { Text = "Exception Type", Checked = true, Location = new Point(155, 25), Size = new Size(130, 24) };
-            ChkDetails = new CheckBox { Text = "Details / Path", Checked = true, Location = new Point(15, 65), Size = new Size(130, 24) };
-            ChkLastModified = new CheckBox { Text = "Last Modified", Checked = true, Location = new Point(155, 65), Size = new Size(130, 24) };
+            ChkApplication = new CheckBox { Text = "Application Name", Checked = true, Location = new Point(15, 22), Size = new Size(130, 24) };
+            ChkType = new CheckBox { Text = "Exception Type", Checked = true, Location = new Point(155, 22), Size = new Size(130, 24) };
+            ChkImportance = new CheckBox { Text = "Importance", Checked = true, Location = new Point(15, 48), Size = new Size(130, 24) };
+            ChkStatus = new CheckBox { Text = "Status", Checked = true, Location = new Point(155, 48), Size = new Size(130, 24) };
+            ChkLifetime = new CheckBox { Text = "Lifetime / Timer", Checked = true, Location = new Point(15, 74), Size = new Size(130, 24) };
+            ChkInherit = new CheckBox { Text = "Child Inherit", Checked = true, Location = new Point(155, 74), Size = new Size(130, 24) };
+            ChkDetails = new CheckBox { Text = "Details / Path", Checked = true, Location = new Point(15, 100), Size = new Size(130, 24) };
+            ChkLastModified = new CheckBox { Text = "Last Modified", Checked = true, Location = new Point(155, 100), Size = new Size(130, 24) };
 
             grpColumns.Controls.Add(ChkApplication);
             grpColumns.Controls.Add(ChkType);
+            grpColumns.Controls.Add(ChkImportance);
+            grpColumns.Controls.Add(ChkStatus);
+            grpColumns.Controls.Add(ChkLifetime);
+            grpColumns.Controls.Add(ChkInherit);
             grpColumns.Controls.Add(ChkDetails);
             grpColumns.Controls.Add(ChkLastModified);
             this.Controls.Add(grpColumns);
@@ -50,7 +62,7 @@ namespace pylorak.TinyWall
             var grpScope = new GroupBox
             {
                 Text = "Copy Scope",
-                Location = new Point(12, 130),
+                Location = new Point(12, 155),
                 Size = new Size(300, 85)
             };
 
@@ -66,7 +78,7 @@ namespace pylorak.TinyWall
             {
                 Text = "Copy",
                 DialogResult = DialogResult.OK,
-                Location = new Point(140, 228),
+                Location = new Point(140, 252),
                 Size = new Size(80, 30)
             };
             this.AcceptButton = BtnCopy;
@@ -75,7 +87,7 @@ namespace pylorak.TinyWall
             {
                 Text = "Cancel",
                 DialogResult = DialogResult.Cancel,
-                Location = new Point(232, 228),
+                Location = new Point(232, 252),
                 Size = new Size(80, 30)
             };
             this.CancelButton = BtnCancel;

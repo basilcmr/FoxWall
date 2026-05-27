@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Pipes;
 using System.Runtime.Serialization;
@@ -50,6 +50,7 @@ namespace pylorak.TinyWall
     [JsonSerializable(typeof(TcpUdpPolicy))]
     [JsonSerializable(typeof(RuleListPolicy))]
     [JsonSerializable(typeof(FirewallExceptionV3))]
+    [JsonSerializable(typeof(RuleImportance))]
     [JsonSerializable(typeof(ServerConfiguration))]
     [JsonSerializable(typeof(ControllerSettings))]
     [JsonSerializable(typeof(UpdateDescriptor))]

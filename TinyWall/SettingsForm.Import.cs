@@ -118,7 +118,7 @@ namespace pylorak.TinyWall
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.5", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.0.6", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
@@ -371,6 +371,10 @@ namespace pylorak.TinyWall
                     var headers = new List<string>();
                     if (choiceForm.ChkApplication.Checked) headers.Add("Application");
                     if (choiceForm.ChkType.Checked) headers.Add("Type");
+                    if (choiceForm.ChkImportance.Checked) headers.Add("Importance");
+                    if (choiceForm.ChkStatus.Checked) headers.Add("Status");
+                    if (choiceForm.ChkLifetime.Checked) headers.Add("Lifetime");
+                    if (choiceForm.ChkInherit.Checked) headers.Add("Child Inherit");
                     if (choiceForm.ChkDetails.Checked) headers.Add("Details / Path");
                     if (choiceForm.ChkLastModified.Checked) headers.Add("Last Modified");
 
@@ -426,6 +430,26 @@ namespace pylorak.TinyWall
                                 case SubjectType.AppContainer: typeStr = "UWP App"; break;
                             }
                             row.Add(typeStr);
+                        }
+
+                        if (choiceForm.ChkImportance.Checked)
+                        {
+                            row.Add(ex.Importance.ToString());
+                        }
+
+                        if (choiceForm.ChkStatus.Checked)
+                        {
+                            row.Add(GetStatusString(ex));
+                        }
+
+                        if (choiceForm.ChkLifetime.Checked)
+                        {
+                            row.Add(GetTimerString(ex));
+                        }
+
+                        if (choiceForm.ChkInherit.Checked)
+                        {
+                            row.Add(ex.ChildProcessesInherit ? "Yes" : "No");
                         }
 
                         if (choiceForm.ChkDetails.Checked)
@@ -538,14 +562,16 @@ namespace pylorak.TinyWall
 
         private void InitializeColumnCustomization()
         {
-            // 1. Programmatically insert "columnImportance"
-            var columnImportance = new ColumnHeader
-            {
-                Tag = "colImportance",
-                Text = "Importance",
-                Width = 100
-            };
+            // 1. Programmatically insert custom columns
+            var columnImportance = new ColumnHeader { Tag = "colImportance", Text = "Importance", Width = 100 };
+            var columnStatus = new ColumnHeader { Tag = "colStatus", Text = "Status", Width = 120 };
+            var columnLifetime = new ColumnHeader { Tag = "colLifetime", Text = "Lifetime", Width = 90 };
+            var columnInherit = new ColumnHeader { Tag = "colInherit", Text = "Child Inherit", Width = 80 };
+
             this.listApplications.Columns.Insert(2, columnImportance);
+            this.listApplications.Columns.Insert(3, columnStatus);
+            this.listApplications.Columns.Insert(4, columnLifetime);
+            this.listApplications.Columns.Insert(5, columnInherit);
 
             // 2. Build default lastKnownWidths map
             var defaultWidths = new Dictionary<string, int>
@@ -553,6 +579,9 @@ namespace pylorak.TinyWall
                 { "colApplication", 180 },
                 { "colType", 80 },
                 { "colImportance", 100 },
+                { "colStatus", 120 },
+                { "colLifetime", 90 },
+                { "colInherit", 80 },
                 { "colDetails", 200 },
                 { "colLastModified", 120 }
             };
@@ -589,8 +618,8 @@ namespace pylorak.TinyWall
                 headerContextMenuStrip.Renderer = ThemeManager.GetToolStripRenderer();
             }
 
-            string[] columnTags = { "colApplication", "colType", "colImportance", "colDetails", "colLastModified" };
-            string[] columnNames = { "Application Name", "Exception Type", "Classification / Importance", "File Path / Details", "Creation Date" };
+            string[] columnTags = { "colApplication", "colType", "colImportance", "colStatus", "colLifetime", "colInherit", "colDetails", "colLastModified" };
+            string[] columnNames = { "Application Name", "Exception Type", "Classification / Importance", "Rule Status (Allowed/Blocked)", "Lifetime / Timer", "Child Inherit", "File Path / Details", "Creation Date" };
 
             for (int i = 0; i < columnTags.Length; i++)
             {

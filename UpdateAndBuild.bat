@@ -68,6 +68,36 @@ if %errorLevel% neq 0 (
     exit /b
 )
 
+:: Create deploy.bat dynamically
+echo Creating deployment script...
+(
+echo @echo off
+echo echo ==============================================
+echo echo        FoxWall Service ^& UI Deployer
+echo echo ==============================================
+echo echo.
+echo echo Terminating running instances of TinyWall...
+echo taskkill /F /IM TinyWall.exe ^>nul 2^>^&1
+echo timeout /t 2 /nobreak ^>nul
+echo echo Stopping TinyWall Service...
+echo net stop TinyWall ^>nul 2^>^&1
+echo sc stop TinyWall ^>nul 2^>^&1
+echo timeout /t 2 /nobreak ^>nul
+echo echo Copying new binaries to Program Files...
+echo set "DEST_DIR=C:\Program Files (x86)\TinyWall"
+echo if not exist "%%DEST_DIR%%" mkdir "%%DEST_DIR%%"
+echo xcopy /Y /S /E "C:\Users\basil\TinyWallTemp\*" "%%DEST_DIR%%\"
+echo echo Registering TinyWall Service...
+echo "%%DEST_DIR%%\TinyWall.exe" /install ^>nul 2^>^&1
+echo echo Starting TinyWall Service...
+echo net start TinyWall ^>nul 2^>^&1
+echo sc start TinyWall ^>nul 2^>^&1
+echo echo Launching TinyWall Controller...
+echo start "" "%%DEST_DIR%%\TinyWall.exe"
+echo echo Installation Finished successfully!
+echo timeout /t 5 ^>nul
+) > "C:\Users\basil\TinyWallTemp\deploy.bat"
+
 :: 4. Trigger elevated deployment script
 echo [4/4] Launching elevated installer...
 powershell.exe -Command "Start-Process cmd.exe -ArgumentList '/c C:\Users\basil\TinyWallTemp\deploy.bat' -Verb RunAs"
