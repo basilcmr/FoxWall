@@ -4,8 +4,8 @@ This document outlines the detailed technical design, architectural changes, and
 
 ### 📊 Roadmap Status Summary
 - `[x]` **1. Import & Export of Application Exceptions List with Settings** (Completed in v1.0.1 - *Difficulty: Very Low*)
-- `[ ]` **2. Direct Google Search Verification Option** (Pending - *Difficulty: Very Low*)
-- `[ ]` **3. Clipboard Copy with Column Selection Dialogue** (Pending - *Difficulty: Low*)
+- `[x]` **2. Direct Google Search Verification Option** (Completed in v1.0.3 - *Difficulty: Very Low*)
+- `[x]` **3. Clipboard Copy with Column Selection Dialogue** (Completed in v1.0.3 - *Difficulty: Low*)
 - `[ ]` **4. Immediate Network "Panic / Kill Switch"** (Pending - *Difficulty: Low-Medium*)
 - `[ ]` **5. Rule Optimizer & Obsolete Exceptions Cleaner** (Pending - *Difficulty: Low-Medium*)
 - `[ ]` **6. Change Name to FoxWall** (Pending - *Difficulty: Low-Medium*)
@@ -51,7 +51,7 @@ This document outlines the detailed technical design, architectural changes, and
 
 ---
 
-## 2. Direct Google Search Verification Option [PENDING]
+## 2. Direct Google Search Verification Option [COMPLETED]
 **Difficulty:** Very Low
 **Goal:** Allow users to instantly investigate any unknown or suspicious executable in their Exception List on Google. With a simple right-click, the firewall launches the default system web browser with a pre-formatted query designed to immediately retrieve community safety reviews, publisher legitimacy checks, and malware reports.
 
@@ -81,7 +81,7 @@ This document outlines the detailed technical design, architectural changes, and
 
 ---
 
-## 3. Clipboard Copy with Column Selection Dialogue [PENDING]
+## 3. Clipboard Copy with Column Selection Dialogue [COMPLETED]
 **Difficulty:** Low
 **Goal:** Provide an easy way to export and document rules textually. With a "Copy to Clipboard" trigger, users can copy all or selected exceptions to their clipboard. An interactive modal popup lets users customize exactly which data fields (e.g. Application Name, Type, Priority, Path/Details, or Creation Date) are compiled into the final clipboard payload, formatted as a clean tab-delimited table.
 
