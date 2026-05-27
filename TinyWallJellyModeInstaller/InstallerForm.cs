@@ -175,6 +175,92 @@ namespace TinyWallJellyModeInstaller
             btnCancel.Enabled = enabled;
         }
 
+        private void PerformUninstall(bool silent)
+        {
+            try
+            {
+                // 1. Close active tray processes
+                AppendLog("Terminating running controller instances...");
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "taskkill.exe",
+                        Arguments = "/F /IM TinyWall.exe",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    };
+                    using (var p = Process.Start(psi))
+                    {
+                        p?.WaitForExit(5000);
+                    }
+                }
+                catch { }
+
+                Thread.Sleep(1500);
+
+                // 2. Invoke native uninstaller
+                string nativeExe = Path.Combine(DestDir, "TinyWall.exe");
+                if (File.Exists(nativeExe))
+                {
+                    AppendLog("Launching native TinyWall uninstaller engine to remove WFP filters, tasks, and services...");
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = nativeExe,
+                        Arguments = "/uninstall",
+                        UseShellExecute = true
+                    };
+                    try
+                    {
+                        using (var p = Process.Start(psi))
+                        {
+                            p?.WaitForExit();
+                        }
+                        AppendLog("Native uninstallation finished.");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"Notice: Native uninstall returned: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    AppendLog("Native engine not found. Running folder cleanup directly...");
+                }
+
+                Thread.Sleep(2000);
+
+                // 3. Clean up folder
+                if (Directory.Exists(DestDir))
+                {
+                    AppendLog("Removing program files folder...");
+                    try
+                    {
+                        Directory.Delete(DestDir, true);
+                        AppendLog("Folder cleanup completed.");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"Notice: Some files couldn't be deleted immediately: {ex.Message}");
+                    }
+                }
+
+                AppendLog("Uninstall finished successfully!");
+                if (!silent)
+                {
+                    MessageBox.Show("FoxWall Jelly Mode has been completely uninstalled and all configuration cleaned.", "Uninstall Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Uninstall Error: {ex.Message}");
+                if (!silent)
+                {
+                    MessageBox.Show($"An error occurred during uninstallation:\n\n{ex.Message}", "Uninstall Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
         private async Task StartInstall()
         {
             SetControlsEnabled(false);
@@ -183,31 +269,18 @@ namespace TinyWallJellyModeInstaller
 
             await Task.Run(() =>
             {
+                // 1. Perform silent uninstall of previous version if exists to ensure clean state
+                string nativeExe = Path.Combine(DestDir, "TinyWall.exe");
+                if (File.Exists(nativeExe))
+                {
+                    AppendLog("Previous installation detected. Running clean uninstallation first...");
+                    PerformUninstall(true);
+                    AppendLog("Clean uninstallation completed. Proceeding with fresh installation...");
+                    Thread.Sleep(2000);
+                }
+
                 try
                 {
-                    // 1. Terminate running tray instances
-                    AppendLog("Closing any running TinyWall tray applications...");
-                    try
-                    {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = "taskkill.exe",
-                            Arguments = "/F /IM TinyWall.exe",
-                            CreateNoWindow = true,
-                            UseShellExecute = false
-                        };
-                        using (var p = Process.Start(psi))
-                        {
-                            p?.WaitForExit(5000);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendLog($"Notice: taskkill failed: {ex.Message}");
-                    }
-
-                    Thread.Sleep(1500);
-
                     // 2. Extract embedded ZIP resource
                     AppendLog("Staging assets...");
                     string tempZipPath = Path.Combine(Path.GetTempPath(), "TinyWallFiles.zip");
@@ -316,85 +389,7 @@ namespace TinyWallJellyModeInstaller
             logTextBox.Clear();
             AppendLog("Starting custom FoxWall uninstallation...");
 
-            await Task.Run(() =>
-            {
-                try
-                {
-                    // 1. Close active tray processes
-                    AppendLog("Terminating running controller instances...");
-                    try
-                    {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = "taskkill.exe",
-                            Arguments = "/F /IM TinyWall.exe",
-                            CreateNoWindow = true,
-                            UseShellExecute = false
-                        };
-                        using (var p = Process.Start(psi))
-                        {
-                            p?.WaitForExit(5000);
-                        }
-                    }
-                    catch { }
-
-                    Thread.Sleep(1500);
-
-                    // 2. Invoke native uninstaller
-                    string nativeExe = Path.Combine(DestDir, "TinyWall.exe");
-                    if (File.Exists(nativeExe))
-                    {
-                        AppendLog("Launching native TinyWall uninstaller engine to remove WFP filters, tasks, and services...");
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = nativeExe,
-                            Arguments = "/uninstall",
-                            UseShellExecute = true
-                        };
-                        try
-                        {
-                            using (var p = Process.Start(psi))
-                            {
-                                p?.WaitForExit();
-                            }
-                            AppendLog("Native uninstallation finished.");
-                        }
-                        catch (Exception ex)
-                        {
-                            AppendLog($"Notice: Native uninstall returned: {ex.Message}");
-                        }
-                    }
-                    else
-                    {
-                        AppendLog("Native engine not found. Running folder cleanup directly...");
-                    }
-
-                    Thread.Sleep(2000);
-
-                    // 3. Clean up folder
-                    if (Directory.Exists(DestDir))
-                    {
-                        AppendLog("Removing program files folder...");
-                        try
-                        {
-                            Directory.Delete(DestDir, true);
-                            AppendLog("Folder cleanup completed.");
-                        }
-                        catch (Exception ex)
-                        {
-                            AppendLog($"Notice: Some files couldn't be deleted immediately: {ex.Message}");
-                        }
-                    }
-
-                    AppendLog("Uninstall finished successfully!");
-                    MessageBox.Show("FoxWall Jelly Mode has been completely uninstalled and all configuration cleaned.", "Uninstall Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    AppendLog($"Uninstall Error: {ex.Message}");
-                    MessageBox.Show($"An error occurred during uninstallation:\n\n{ex.Message}", "Uninstall Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
+            await Task.Run(() => PerformUninstall(false));
 
             SetControlsEnabled(true);
         }

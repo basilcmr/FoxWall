@@ -68,8 +68,8 @@ if %errorLevel% neq 0 (
 
 :: 5. Copy output executable to workspace root
 echo [5/5] Deploying final installer to root...
-copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.exe" "%WORKSPACE_DIR%\TinyWallJellyModeInstaller.exe"
-copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\TinyWallJellyModeInstaller.exe" "TinyWallJellyModeInstaller.exe"
+copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "%WORKSPACE_DIR%\FoxWallJellyModeInstaller.exe"
+copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "FoxWallJellyModeInstaller.exe"
 
 :: Clean up temporary ZIP
 del /F /Q "TinyWallFiles.zip" >nul 2>&1
