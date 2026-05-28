@@ -12,6 +12,10 @@ if %errorLevel% neq 0 (
     pause
     exit /b
 )
+
+:: Read version dynamically from version.json
+for /f "delims=" %%i in ('powershell -NoProfile -Command "(Get-Content '%~dp0version.json' -Raw | ConvertFrom-Json).Version"') do set "VERSION=%%i"
+echo Centralized FoxWall Version: %VERSION%
 echo.
 
 :: Close any running installer instances to prevent file lock issues
@@ -32,6 +36,26 @@ if exist "%~dp0TinyWall\TinyWall.sln" (
 )
 
 cd /d "%REPO_DIR%"
+
+:: Compile the TinyWall C# project first to ensure the staged binaries are fully up-to-date with version.json
+echo [0/5] Compiling TinyWall binaries...
+set "MSBuildEnableWorkloadResolver=false"
+set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
+set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
+
+if exist "%MSBUILD_PATH%" (
+    "%MSBUILD_PATH%" TinyWall\TinyWall.csproj /t:Rebuild /p:Configuration=Release
+    if %errorLevel% neq 0 (
+        echo ERROR: TinyWall compilation failed!
+        pause
+        exit /b
+    )
+) else (
+    echo ERROR: MSBuild.exe was not found at: "%MSBUILD_PATH%"
+    pause
+    exit /b
+)
+echo.
 
 :: 1. Copy latest Release builds to staging folder (C: drive)
 echo [1/5] Staging latest compiled files...
@@ -84,13 +108,15 @@ if %errorLevel% neq 0 (
 echo [5/5] Deploying final installer to root...
 copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "%WORKSPACE_DIR%\FoxWallJellyModeInstaller.exe"
 copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "FoxWallJellyModeInstaller.exe"
+copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "%WORKSPACE_DIR%\FoxWallJellyModeInstaller %VERSION%.exe"
+copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "FoxWallJellyModeInstaller %VERSION%.exe"
 
 :: Clean up temporary ZIP
 del /F /Q "TinyWallFiles.zip" >nul 2>&1
 
 echo.
 echo ==============================================
-echo SUCCESS: TinyWallJellyModeInstaller.exe is ready!
+echo SUCCESS: FoxWallJellyModeInstaller %VERSION%.exe is ready!
 echo ==============================================
 echo.
 pause

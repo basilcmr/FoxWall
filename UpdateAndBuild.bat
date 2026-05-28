@@ -12,6 +12,10 @@ if %errorLevel% neq 0 (
     pause
     exit /b
 )
+
+:: Read version dynamically from version.json
+for /f "delims=" %%i in ('powershell -NoProfile -Command "(Get-Content '%~dp0version.json' -Raw | ConvertFrom-Json).Version"') do set "VERSION=%%i"
+echo Centralized FoxWall Version: %VERSION%
 echo.
 
 :: Close any running installer instances to prevent file lock issues
