@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -36,7 +36,7 @@ namespace TinyWallJellyModeInstaller
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Text = "FoxWall Jelly Mode Setup (v1.0.6)";
+            this.Text = "FoxWall Jelly Mode Setup (v1.1.0)";
             this.BackColor = Color.FromArgb(18, 18, 18);
             this.ForeColor = Color.White;
 
@@ -56,7 +56,7 @@ namespace TinyWallJellyModeInstaller
 
             titleLabel = new Label
             {
-                Text = "FoxWall Custom Setup (v1.0.6)",
+                Text = "FoxWall Custom Setup (v1.1.0)",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.White,
                 Location = new Point(15, 12),
@@ -65,7 +65,7 @@ namespace TinyWallJellyModeInstaller
 
             subtitleLabel = new Label
             {
-                Text = "Install or completely remove the custom-themed FoxWall Jelly Mode config (v1.0.6).",
+                Text = "Install or completely remove the custom-themed FoxWall Jelly Mode config (v1.1.0).",
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
                 ForeColor = Color.FromArgb(160, 160, 160),
                 Location = new Point(16, 38),
@@ -265,7 +265,7 @@ namespace TinyWallJellyModeInstaller
         {
             SetControlsEnabled(false);
             logTextBox.Clear();
-            AppendLog("Starting custom FoxWall 1.0.6 installation...");
+            AppendLog("Starting custom FoxWall 1.1.0 installation...");
 
             await Task.Run(() =>
             {
@@ -383,7 +383,7 @@ namespace TinyWallJellyModeInstaller
                     }
 
                     AppendLog("Installation completed successfully!");
-                    MessageBox.Show("FoxWall version 1.0.6 (Custom Jelly Mode) has been successfully installed and started!\n\nEnjoy watching movies on your TV with JellyMode whitelisted!", "Installation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("FoxWall version 1.1.0 (Custom Jelly Mode) has been successfully installed and started!\n\nEnjoy watching movies on your TV with JellyMode whitelisted!", "Installation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {

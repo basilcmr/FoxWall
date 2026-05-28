@@ -4,6 +4,16 @@ echo        TinyWall Custom Installer Builder
 echo ==============================================
 echo.
 
+:: Sync version number from centralized version.json
+echo Syncing version number from version.json...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0UpdateVersion.ps1"
+if %errorLevel% neq 0 (
+    echo ERROR: Version sync failed!
+    pause
+    exit /b
+)
+echo.
+
 :: Close any running installer instances to prevent file lock issues
 taskkill /F /IM TinyWallJellyModeInstaller.exe >nul 2>&1
 taskkill /F /IM FoxWallJellyModeInstaller.exe >nul 2>&1

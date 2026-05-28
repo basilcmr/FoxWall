@@ -41,7 +41,10 @@ This project has a dedicated **"Update from Upstream"** feature that pulls updat
 ## 🏷️ VERSIONING POLICY
 
 Every custom feature, enhancement, or bug fix should increment the custom **FoxWall** version.
-- **Version Format:** `FoxWall X.Y.Z` (e.g., currently `1.0.2` after adding the wildcard path exceptions feature).
-- **Minor Changes / Features:** Every new feature should trigger a new small version update by incrementing the patch number (e.g., `1.0.0` -> `1.0.1`).
+- **Version Format:** `FoxWall X.Y.Z` (e.g., currently `1.1.0` after adding full wildcard recursion).
+- **Versioning Increments:**
+  - **Major Versions (X.0.0):** Incremented for major architecture changes or breaking changes (first number: e.g. `1.0.0` -> `2.0.0`).
+  - **Feature Versions (X.Y.0):** Incremented for new feature additions and enhancements (second number: e.g. `1.0.6` -> `1.1.0`).
+  - **Bug Fixes / Security Patches (X.Y.Z):** Incremented for patches, bug fixes, and minor adjustments (third number: e.g. `1.0.6` -> `1.0.7`).
 - **Settings UI Display:** Programmatically append the `FoxWall X.Y.Z` string to `lblVersion.Text` in `SettingsForm.cs` and adjust layout elements down programmatically to prevent any overlap.
 - **Installer Rebranding:** Ensure the installer (`InstallerForm.cs`) titles, header banners, logs, and completion message box are updated to match the active FoxWall version to let the user confirm they are installing/updating to the correct version.
