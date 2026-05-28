@@ -43,6 +43,10 @@ window.onload = () => {
   
   pollData();
   setInterval(pollData, 1500);
+  
+  setTimeout(() => {
+    lucide.createIcons();
+  }, 300);
 };
 
 // Switch Sidebar Tabs
@@ -60,7 +64,16 @@ function switchTab(tabId, element) {
   if (tabId === 'analytics') {
     resizeCanvas();
     fetchAnalyticsHistory();
+  } else if (tabId === 'process-analytics') {
+    initProcessHistorySelect();
+    setTimeout(() => {
+      drawProcessHistoryChart();
+    }, 100);
   }
+  
+  setTimeout(() => {
+    lucide.createIcons();
+  }, 150);
 }
 
 // Fetch data from local API
@@ -98,6 +111,11 @@ async function pollData() {
 
 // Update DOM elements with live data
 function updateUI() {
+  // Update version
+  if (statusData.version) {
+    document.getElementById('appVersion').innerText = `v${statusData.version}`;
+  }
+
   // Update general status
   document.getElementById('statusText').innerText = "Active Guard";
   document.getElementById('statusText').parentElement.style.borderColor = "var(--success-color)";
@@ -132,21 +150,28 @@ function updateUI() {
   const panicBtn = document.getElementById('panicBtn');
   if (statusData.panicActive) {
     panicBtn.classList.add('active');
-    panicBtn.innerHTML = '⚠️ Panic Switch ACTIVE (Network Blocked)';
+    panicBtn.innerHTML = '<i data-lucide="alert-triangle" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Global Panic Switch ACTIVE (Network Blocked)';
   } else {
     panicBtn.classList.remove('active');
-    panicBtn.innerHTML = '⚠️ Global Panic Switch';
+    panicBtn.innerHTML = '<i data-lucide="zap" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Global Panic Switch';
   }
 
   // Redraw canvas if active
   if (activeTab === 'analytics') {
     drawChart();
     updateBandwidthList();
+  } else if (activeTab === 'process-analytics') {
+    drawProcessHistoryChart();
+    updateProcessDetailStats();
   }
 
   // Populate grids
   renderSocketsTable();
   renderLogsTable();
+  
+  setTimeout(() => {
+    lucide.createIcons();
+  }, 100);
 }
 
 function formatSpeed(bytesPerSec) {
@@ -209,15 +234,21 @@ function renderSocketsTable() {
     return `
       <tr>
         <td>
-          <div class="process-cell">
-            <span style="font-size: 18px;">📄</span>
+          <div class="process-cell" style="display: flex; align-items: center; gap: 12px;">
+            <i data-lucide="cpu" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
             <div class="process-info">
-              <span class="process-name">
+              <span class="process-name" style="display: flex; align-items: center; flex-wrap: wrap;">
                 ${s.ProcessName}
                 <span class="task-actions-inline">
-                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${s.ProcessName}', '${safePath}')">📋</span>
-                  <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${s.ProcessName}', '${safePath}')">🔍</span>
-                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${s.FileHash}')">🛡️</span>
+                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${s.ProcessName}', '${safePath}')">
+                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                  </span>
+                  <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${s.ProcessName}', '${safePath}')">
+                    <i data-lucide="search" style="width: 12px; height: 12px;"></i>
+                  </span>
+                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${s.FileHash}')">
+                    <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
+                  </span>
                 </span>
               </span>
               <span class="process-pid">PID: ${s.Pid}</span>
@@ -230,8 +261,12 @@ function renderSocketsTable() {
         <td><span class="state-badge ${badgeClass}">${s.State}</span></td>
         <td>${s.Time}</td>
         <td>
-          <button class="action-btn" title="VirusTotal Lookup" onclick="searchVirusTotal('${safePath}', '${s.FileHash}')">🔍</button>
-          <button class="action-btn terminate" title="Terminate Process" onclick="terminateProcess(${s.Pid})">❌</button>
+          <button class="action-btn" title="VirusTotal Lookup" onclick="searchVirusTotal('${safePath}', '${s.FileHash}')">
+            <i data-lucide="shield-alert" style="width: 14px; height: 14px; color: white;"></i>
+          </button>
+          <button class="action-btn terminate" title="Terminate Process" onclick="terminateProcess(${s.Pid})">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px; color: white;"></i>
+          </button>
         </td>
       </tr>
     `;
@@ -276,15 +311,21 @@ function renderLogsTable() {
       <tr>
         <td>${l.Time}</td>
         <td>
-          <div class="process-cell">
-            <span style="font-size: 18px;">🛡️</span>
+          <div class="process-cell" style="display: flex; align-items: center; gap: 12px;">
+            <i data-lucide="shield" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
             <div class="process-info">
-              <span class="process-name">
+              <span class="process-name" style="display: flex; align-items: center; flex-wrap: wrap;">
                 ${l.ProcessName}
                 <span class="task-actions-inline">
-                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${l.ProcessName}', '${safePath}')">📋</span>
-                  <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${l.ProcessName}', '${safePath}')">🔍</span>
-                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${l.FileHash}')">🛡️</span>
+                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${l.ProcessName}', '${safePath}')">
+                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                  </span>
+                  <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${l.ProcessName}', '${safePath}')">
+                    <i data-lucide="search" style="width: 12px; height: 12px;"></i>
+                  </span>
+                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${l.FileHash}')">
+                    <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
+                  </span>
                 </span>
               </span>
               <span class="process-pid">PID: ${l.Pid}</span>
@@ -297,7 +338,9 @@ function renderLogsTable() {
         <td>${l.RemoteAddress}:${l.RemotePort}</td>
         <td><span class="state-badge ${badgeClass}">${l.Action}</span></td>
         <td>
-          <button class="action-btn" title="Quick Whitelist App" onclick="quickWhitelist('${safePath}')">➕</button>
+          <button class="action-btn" title="Quick Whitelist App" onclick="quickWhitelist('${safePath}')">
+            <i data-lucide="plus-circle" style="width: 14px; height: 14px; color: white;"></i>
+          </button>
         </td>
       </tr>
     `;
@@ -452,18 +495,41 @@ function openClickDetailModal(point) {
       const name = parts[0];
       const speed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
       
-      // Heuristically construct standard path mock for click modal lookup integrity
-      const mockPath = `C:\\Windows\\System32\\${name}.exe`;
-      const safePath = mockPath.replace(/\\/g, '\\\\');
+      // Look up real path and hash from live/log data
+      let resolvedPath = '';
+      let resolvedHash = '';
+      
+      const socketMatch = socketData.find(s => s.ProcessName.toLowerCase() === name.toLowerCase());
+      if (socketMatch) {
+        resolvedPath = socketMatch.Path;
+        resolvedHash = socketMatch.FileHash;
+      } else {
+        const logMatch = logData.find(l => l.ProcessName.toLowerCase() === name.toLowerCase());
+        if (logMatch) {
+          resolvedPath = logMatch.Path;
+          resolvedHash = logMatch.FileHash;
+        }
+      }
+      
+      if (!resolvedPath) {
+        resolvedPath = `C:\\Windows\\System32\\${name}.exe`;
+      }
+      const safePath = resolvedPath.replace(/\\/g, '\\\\');
       
       return `
         <tr>
           <td style="padding: 10px 16px; font-weight: 600; color: white;">${idx + 1}. ${name}</td>
           <td style="padding: 10px 16px; text-align: right; color: #ffcc00; font-weight: 600;">${speed}</td>
           <td style="padding: 10px 16px; text-align: center;">
-            <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${name}', '${safePath}')" style="font-size: 13px; margin: 0 4px; display: inline-block;">📋</span>
-            <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${name}', '${safePath}')" style="font-size: 13px; margin: 0 4px; display: inline-block;">🔍</span>
-            <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '')" style="font-size: 13px; margin: 0 4px; display: inline-block;">🛡️</span>
+            <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${name}', '${safePath}')" style="margin: 0 4px; display: inline-block;">
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+            </span>
+            <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${name}', '${safePath}')" style="margin: 0 4px; display: inline-block;">
+              <i data-lucide="search" style="width: 12px; height: 12px;"></i>
+            </span>
+            <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${resolvedHash}')" style="margin: 0 4px; display: inline-block;">
+              <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
+            </span>
           </td>
         </tr>
       `;
@@ -471,6 +537,10 @@ function openClickDetailModal(point) {
   }
   
   document.getElementById('chartClickDetailModal').style.display = 'flex';
+  
+  setTimeout(() => {
+    lucide.createIcons();
+  }, 100);
 }
 
 function handleChartLeave() {
@@ -508,7 +578,7 @@ function showChartTooltip(clientX, clientY, point) {
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 5px; font-size: 11px;">
           <span style="color: white; font-weight: 500; display: flex; align-items: center; gap: 4px;">
-            <span style="color: var(--accent-color); font-size: 8px;">▶</span> ${idx + 1}. ${name}
+            <i data-lucide="chevron-right" style="width: 10px; height: 10px; color: var(--accent-color);"></i> ${idx + 1}. ${name}
           </span>
           <span style="color: #ffcc00; font-weight: 600;">${speed}</span>
         </div>
@@ -519,7 +589,7 @@ function showChartTooltip(clientX, clientY, point) {
     const topTask = rawTasks.split(';')[0];
     taskHtml = `
       <div style="color: #ffcc00; font-weight: 600; font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
-        <span>⚡</span> <span>${topTask}</span>
+        <i data-lucide="zap" style="width: 12px; height: 12px; color: #ffcc00;"></i> <span>${topTask}</span>
       </div>
     `;
   }
@@ -553,6 +623,7 @@ function resizeCanvas() {
   chartCanvas.width = rect.width;
   chartCanvas.height = 300;
   drawChart();
+  drawProcessHistoryChart();
 }
 
 function drawChart() {
@@ -849,17 +920,17 @@ function openSearchModal(name, path) {
 }
 
 function toggleSearchOptionSelection(field) {
-  let defaultQuery = '';
+  let rawValue = '';
   if (field === 'name') {
-    defaultQuery = currentSearchData.name;
+    rawValue = currentSearchData.name;
   } else {
     const path = currentSearchData.path;
-    defaultQuery = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
+    rawValue = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
   }
   
   const queryInput = document.getElementById('searchPromptQueryInput');
   if (queryInput) {
-    queryInput.value = defaultQuery;
+    queryInput.value = `is ${rawValue} safe legitimate or malware virus`;
   }
 }
 
@@ -881,12 +952,14 @@ function confirmSearchGoogle() {
     finalQuery = queryInput.value;
   } else {
     const selectedOption = document.querySelector('input[name="searchField"]:checked').value;
+    let rawValue = '';
     if (selectedOption === 'name') {
-      finalQuery = currentSearchData.name;
+      rawValue = currentSearchData.name;
     } else {
       const path = currentSearchData.path;
-      finalQuery = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
+      rawValue = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
     }
+    finalQuery = `is ${rawValue} safe legitimate or malware virus`;
   }
   
   window.open(`https://www.google.com/search?q=${encodeURIComponent(finalQuery)}`, '_blank');
@@ -920,6 +993,184 @@ function showToast(msg) {
   setTimeout(() => { toast.className = ''; }, 2500);
 }
 
+// Process Analytics Tab Helper Logic
+let selectedProcessHistoryTarget = '';
+
+function initProcessHistorySelect() {
+  const select = document.getElementById('processHistorySelect');
+  if (!select) return;
+  
+  // Extract unique background process names from history logs
+  const processes = new Set();
+  analyticsPoints.forEach(p => {
+    if (p.PeakTask && p.PeakTask !== 'Idle') {
+      p.PeakTask.split(';').forEach(t => {
+        const name = t.split(' (')[0].trim();
+        if (name && name !== 'System Service') {
+          processes.add(name);
+        }
+      });
+    }
+  });
+  
+  // Fallback to active connections if history is young
+  socketData.forEach(s => {
+    if (s.ProcessName && s.ProcessName !== 'System / Services') {
+      processes.add(s.ProcessName);
+    }
+  });
+  
+  const sorted = Array.from(processes).sort();
+  if (sorted.length === 0) {
+    select.innerHTML = '<option value="">No active network tasks found</option>';
+    return;
+  }
+  
+  const oldVal = select.value || sorted[0];
+  select.innerHTML = sorted.map(p => `<option value="${p}" ${p === oldVal ? 'selected' : ''}>${p}</option>`).join('');
+  selectedProcessHistoryTarget = select.value;
+  updateProcessDetailStats();
+}
+
+function changeProcessHistoryTarget(val) {
+  selectedProcessHistoryTarget = val;
+  updateProcessDetailStats();
+  drawProcessHistoryChart();
+}
+
+function updateProcessDetailStats() {
+  if (!selectedProcessHistoryTarget) return;
+  
+  // 1. Active Connections
+  const conns = socketData.filter(s => s.ProcessName === selectedProcessHistoryTarget).length;
+  document.getElementById('procDetailActiveConns').innerText = `${conns} conns`;
+  
+  // 2. Peak Speed in History
+  let peakBytes = 0;
+  analyticsPoints.forEach(p => {
+    if (p.PeakTask && p.PeakTask.includes(selectedProcessHistoryTarget)) {
+      p.PeakTask.split(';').forEach(t => {
+        if (t.startsWith(selectedProcessHistoryTarget)) {
+          const speedPart = t.split('(')[1]?.replace(')', '').trim();
+          if (speedPart) {
+            let bytes = parseFloat(speedPart);
+            if (speedPart.includes('MiB/s')) bytes *= 1024 * 1024;
+            else if (speedPart.includes('KiB/s')) bytes *= 1024;
+            if (bytes > peakBytes) peakBytes = bytes;
+          }
+        }
+      });
+    }
+  });
+  document.getElementById('procDetailPeakSpeed').innerText = formatSpeed(peakBytes);
+  
+  // 3. Events Logged
+  const events = logData.filter(l => l.ProcessName === selectedProcessHistoryTarget).length;
+  document.getElementById('procDetailAlerts').innerText = `${events} occurrences`;
+}
+
+function drawProcessHistoryChart() {
+  const canvas = document.getElementById('processBandwidthChart');
+  if (!canvas) return;
+  
+  const pCtx = canvas.getContext('2d');
+  const w = canvas.width = canvas.parentElement.getBoundingClientRect().width;
+  const h = canvas.height = 300;
+  pCtx.clearRect(0, 0, w, h);
+  
+  const points = analyticsPoints;
+  if (!selectedProcessHistoryTarget || points.length === 0) {
+    pCtx.font = '14px Outfit';
+    pCtx.fillStyle = 'var(--text-secondary)';
+    pCtx.textAlign = 'center';
+    pCtx.fillText("Select an application from the dropdown to view its history.", w / 2, h / 2);
+    return;
+  }
+  
+  // Parse speeds at each timestamp
+  const values = points.map(p => {
+    let speedBytes = 0;
+    if (p.PeakTask && p.PeakTask.includes(selectedProcessHistoryTarget)) {
+      p.PeakTask.split(';').forEach(t => {
+        if (t.startsWith(selectedProcessHistoryTarget)) {
+          const speedPart = t.split('(')[1]?.replace(')', '').trim();
+          if (speedPart) {
+            let bytes = parseFloat(speedPart);
+            if (speedPart.includes('MiB/s')) bytes *= 1024 * 1024;
+            else if (speedPart.includes('KiB/s')) bytes *= 1024;
+            speedBytes = bytes;
+          }
+        }
+      });
+    }
+    return speedBytes / 1024; // KB/s
+  });
+  
+  const maxVal = Math.max(...values, 10);
+  
+  // Draw background grid lines
+  pCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+  pCtx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = (h / 5) * i;
+    pCtx.beginPath();
+    pCtx.moveTo(0, y);
+    pCtx.lineTo(w, y);
+    pCtx.stroke();
+  }
+  
+  function getX(index) {
+    if (points.length <= 1) return w / 2;
+    return (w / (points.length - 1)) * index;
+  }
+  
+  function getY(value) {
+    return h - (h - 60) * (value / maxVal) - 30;
+  }
+  
+  // Draw magenta process history line
+  pCtx.beginPath();
+  pCtx.moveTo(getX(0), getY(values[0]));
+  for (let i = 1; i < points.length; i++) {
+    pCtx.lineTo(getX(i), getY(values[i]));
+  }
+  
+  pCtx.strokeStyle = 'var(--magenta-color)';
+  pCtx.lineWidth = 2.5;
+  pCtx.shadowBlur = 12;
+  pCtx.shadowColor = 'var(--magenta-glow)';
+  pCtx.stroke();
+  pCtx.shadowBlur = 0;
+  
+  pCtx.lineTo(getX(points.length - 1), h);
+  pCtx.lineTo(getX(0), h);
+  pCtx.closePath();
+  pCtx.fillStyle = 'rgba(255, 0, 127, 0.12)';
+  pCtx.fill();
+  
+  // Draw bottom dynamic X-Axis labels
+  if (points.length >= 2) {
+    pCtx.font = '10px Outfit';
+    pCtx.fillStyle = 'var(--text-secondary)';
+    
+    function formatProcessLabel(timeStr) {
+      const d = new Date(timeStr);
+      return `${d.toLocaleDateString([], {month:'short', day:'numeric'})} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    }
+    
+    pCtx.textAlign = 'left';
+    pCtx.fillText(formatProcessLabel(points[0].Time), 20, h - 10);
+    pCtx.textAlign = 'right';
+    pCtx.fillText(formatProcessLabel(points[points.length - 1].Time), w - 20, h - 10);
+  }
+  
+  // Top speed indicator legend label
+  pCtx.font = '13px Outfit';
+  pCtx.textAlign = 'left';
+  pCtx.fillStyle = 'var(--magenta-color)';
+  pCtx.fillText(`Selected App: ${selectedProcessHistoryTarget} (Peak: ${formatSpeed(Math.max(...values) * 1024)})`, 20, 30);
+}
+
 // Generate Bandwidth by Process indicators
 function updateBandwidthList() {
   const container = document.getElementById('bandwidthList');
@@ -944,14 +1195,43 @@ function updateBandwidthList() {
 
   container.innerHTML = sortedApps.slice(0, 5).map(a => {
     const widthPercentage = (a.count / maxCount) * 100;
+    
+    // Look up real path and hash from live/log data
+    let resolvedPath = '';
+    let resolvedHash = '';
+    
+    const socketMatch = socketData.find(s => s.ProcessName.toLowerCase() === a.name.toLowerCase());
+    if (socketMatch) {
+      resolvedPath = socketMatch.Path;
+      resolvedHash = socketMatch.FileHash;
+    } else {
+      const logMatch = logData.find(l => l.ProcessName.toLowerCase() === a.name.toLowerCase());
+      if (logMatch) {
+        resolvedPath = logMatch.Path;
+        resolvedHash = logMatch.FileHash;
+      }
+    }
+    
+    if (!resolvedPath) {
+      resolvedPath = a.name;
+    }
+    const safePath = resolvedPath.replace(/\\/g, '\\\\');
+
     return `
       <div class="bandwidth-item">
         <div class="bandwidth-header" style="align-items: center;">
           <span class="bandwidth-app" style="display: flex; align-items: center; gap: 8px;">
             ${a.name}
             <span class="task-actions-inline">
-              <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${a.name}', '${a.name}')">📋</span>
-              <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${a.name}', '${a.name}')">🔍</span>
+              <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${a.name}', '${safePath}')">
+                <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+              </span>
+              <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${a.name}', '${safePath}')">
+                <i data-lucide="search" style="width: 12px; height: 12px;"></i>
+              </span>
+              <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${resolvedHash}')">
+                <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
+              </span>
             </span>
           </span>
           <span style="color: var(--text-secondary);">${a.count} active connections</span>

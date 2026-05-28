@@ -699,13 +699,17 @@ canvas {
   opacity: 0;
   transform: translateY(20px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10000;
+  z-index: 10200;
   pointer-events: none;
 }
 
 #appToast.show {
   opacity: 1;
   transform: translateY(0);
+}
+
+#copyOptionsModal, #searchOptionsModal {
+  z-index: 10100;
 }
 
 /* Premium Dialog Modals */

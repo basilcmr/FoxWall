@@ -225,7 +225,8 @@ namespace pylorak.TinyWall
                         locked = GlobalInstances.Controller.IsServerLocked,
                         rxSpeed = HistoryLogger.CurrentRx,
                         txSpeed = HistoryLogger.CurrentTx,
-                        panicActive = PanicActive
+                        panicActive = PanicActive,
+                        version = GetVersion()
                     };
                     break;
 
@@ -452,6 +453,30 @@ namespace pylorak.TinyWall
             string resolvedPath = Utils.GetPathOfProcessUseTwService(pid, GlobalInstances.Controller);
             cache.Add(pid, resolvedPath);
             return resolvedPath;
+        }
+
+        private string GetVersion()
+        {
+            try
+            {
+                // version.json is located in the root application directory or one parent folder up
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "version.json");
+                if (!File.Exists(path))
+                {
+                    path = Path.Combine(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.FullName ?? "", "version.json");
+                }
+                if (File.Exists(path))
+                {
+                    string json = File.ReadAllText(path);
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("Version", out JsonElement val))
+                    {
+                        return val.GetString() ?? "1.2.3";
+                    }
+                }
+            }
+            catch { }
+            return "1.2.3";
         }
 
         public void Dispose()

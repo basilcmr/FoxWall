@@ -100,6 +100,7 @@ if %errorLevel% neq 0 (
 echo [3/4] Staging compiled files to %TEMP%\TinyWallTemp...
 if not exist "%TEMP%\TinyWallTemp" mkdir "%TEMP%\TinyWallTemp"
 xcopy /Y /S /E "TinyWall\bin\Release\*" "%TEMP%\TinyWallTemp\"
+copy /Y "version.json" "%TEMP%\TinyWallTemp\"
 if %errorLevel% neq 0 (
     echo ERROR: Failed to stage files to TEMP directory!
     pause

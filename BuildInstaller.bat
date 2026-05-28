@@ -85,6 +85,7 @@ echo.
 echo [1/5] Staging latest compiled files...
 if not exist "%TEMP%\TinyWallTemp" mkdir "%TEMP%\TinyWallTemp"
 xcopy /Y /S /E "TinyWall\bin\Release\*" "%TEMP%\TinyWallTemp\"
+copy /Y "version.json" "%TEMP%\TinyWallTemp\"
 if %errorLevel% neq 0 (
     echo ERROR: Failed to stage Release files!
     pause
