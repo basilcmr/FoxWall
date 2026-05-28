@@ -161,9 +161,20 @@ export function ChartClickDetailModal({ isOpen, onClose, point, socketData, logD
   const rawTasks = point.PeakTask || 'System Service (Idle)';
   const tasks = rawTasks === 'Idle' || !rawTasks ? [] : rawTasks.split(';');
 
+  const parseSpeedToBytes = (speedStr) => {
+    if (!speedStr) return 0;
+    const match = speedStr.match(/([\d.]+)\s*(KiB\/s|MiB\/s|B\/s)/i);
+    if (!match) return 0;
+    const val = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+    if (unit.includes('mib')) return val * 1024 * 1024;
+    if (unit.includes('kib')) return val * 1024;
+    return val;
+  };
+
   return (
     <div id="chartClickDetailModal" className="modal-overlay" style={{ display: 'flex' }}>
-      <div className="modal-card" style={{ maxWidth: '550px' }}>
+      <div className="modal-card" style={{ maxWidth: '700px' }}>
         <div className="modal-header">
           <div>
             <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -191,14 +202,16 @@ export function ChartClickDetailModal({ isOpen, onClose, point, socketData, logD
               <thead>
                 <tr>
                   <th style={{ padding: '12px 16px', fontSize: '12px' }}>Active Task</th>
-                  <th style={{ padding: '12px 16px', fontSize: '12px', textAlign: 'right' }}>Simulated Share</th>
-                  <th style={{ padding: '12px 16px', fontSize: '12px', textAlign: 'center', width: '140px' }}>Actions</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', textAlign: 'center' }}>Connections</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', textAlign: 'right' }}>Download</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', textAlign: 'right' }}>Upload</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', textAlign: 'center', width: '120px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody id="clickModalTableBody">
                 {tasks.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
+                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
                       System was idle at this point.
                     </td>
                   </tr>
@@ -206,12 +219,36 @@ export function ChartClickDetailModal({ isOpen, onClose, point, socketData, logD
                   tasks.map((t, idx) => {
                     const parts = t.split(' (');
                     const name = parts[0];
-                    const speed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+                    const rawSpeed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+                    
+                    const match = rawSpeed.match(/(\d+)\s+connections?\s*-\s*(.+)/);
+                    
+                    let connText = '0c';
+                    let rateText = rawSpeed;
+                    
+                    if (match) {
+                      connText = `${match[1]}c`;
+                      rateText = match[2];
+                    }
+
+                    const processBytes = parseSpeedToBytes(rateText);
+                    const totalBytes = (point.Rx || 0) + (point.Tx || 0);
+
+                    let processRx = 0;
+                    let processTx = 0;
+
+                    if (totalBytes > 0) {
+                      const share = processBytes / totalBytes;
+                      processRx = (point.Rx || 0) * share;
+                      processTx = (point.Tx || 0) * share;
+                    }
                     
                     return (
                       <tr key={idx}>
                         <td style={{ padding: '10px 16px', fontWeight: 600, color: 'white' }}>{idx + 1}. {name}</td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', color: '#ffcc00', fontWeight: 600 }}>{speed}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'center', color: '#ffcc00', fontWeight: 600 }}>{connText}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--success-color)', fontWeight: 600 }}>{formatSpeed(processRx)}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--accent-color)', fontWeight: 600 }}>{formatSpeed(processTx)}</td>
                         <td style={{ padding: '10px 16px', textAlign: 'center' }}>
                           <ProcessActions
                             processName={name}
