@@ -36,7 +36,7 @@ namespace TinyWallJellyModeInstaller
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Text = "FoxWall Jelly Mode Setup (v1.1.3)";
+            this.Text = "FoxWall Jelly Mode Setup (v1.1.4)";
             this.BackColor = Color.FromArgb(18, 18, 18);
             this.ForeColor = Color.White;
 
@@ -56,7 +56,7 @@ namespace TinyWallJellyModeInstaller
 
             titleLabel = new Label
             {
-                Text = "FoxWall Custom Setup (v1.1.3)",
+                Text = "FoxWall Custom Setup (v1.1.4)",
                 Font = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = Color.White,
                 Location = new Point(15, 12),
@@ -65,7 +65,7 @@ namespace TinyWallJellyModeInstaller
 
             subtitleLabel = new Label
             {
-                Text = "Install or completely remove the custom-themed FoxWall Jelly Mode config (v1.1.3).",
+                Text = "Install or completely remove the custom-themed FoxWall Jelly Mode config (v1.1.4).",
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
                 ForeColor = Color.FromArgb(160, 160, 160),
                 Location = new Point(16, 38),
@@ -179,7 +179,30 @@ namespace TinyWallJellyModeInstaller
         {
             try
             {
-                // 1. Close active tray processes
+                // 1. Stop background service explicitly first to release file locks on TinyWall.exe
+                AppendLog("Stopping background service...");
+                try
+                {
+                    using (var sc = new ServiceController("TinyWall"))
+                    {
+                        if (sc.Status != ServiceControllerStatus.Stopped && sc.Status != ServiceControllerStatus.StopPending)
+                        {
+                            sc.Stop();
+                            sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(10));
+                            AppendLog("Background service stopped.");
+                        }
+                        else
+                        {
+                            AppendLog("Background service is already stopped.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"Notice: Service stopping returned: {ex.Message}");
+                }
+
+                // 2. Close active tray processes
                 AppendLog("Terminating running controller instances...");
                 try
                 {
@@ -265,7 +288,7 @@ namespace TinyWallJellyModeInstaller
         {
             SetControlsEnabled(false);
             logTextBox.Clear();
-            AppendLog("Starting custom FoxWall 1.1.3 installation...");
+            AppendLog("Starting custom FoxWall 1.1.4 installation...");
 
             await Task.Run(() =>
             {
@@ -383,7 +406,7 @@ namespace TinyWallJellyModeInstaller
                     }
 
                     AppendLog("Installation completed successfully!");
-                    MessageBox.Show("FoxWall version 1.1.3 (Custom Jelly Mode) has been successfully installed and started!\n\nEnjoy watching movies on your TV with JellyMode whitelisted!", "Installation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("FoxWall version 1.1.4 (Custom Jelly Mode) has been successfully installed and started!\n\nEnjoy watching movies on your TV with JellyMode whitelisted!", "Installation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {

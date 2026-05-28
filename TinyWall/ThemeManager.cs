@@ -21,6 +21,11 @@ namespace pylorak.TinyWall
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+        [DllImport("user32.dll", EntryPoint = "SendMessage")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+        private const int LVM_GETHEADER = 0x101F;
+
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
@@ -177,6 +182,8 @@ namespace pylorak.TinyWall
                 button.MouseEnter += Button_MouseEnter;
                 button.MouseLeave -= Button_MouseLeave;
                 button.MouseLeave += Button_MouseLeave;
+                button.Paint -= Button_Paint;
+                button.Paint += Button_Paint;
             }
             else if (ctrl is TextBox textBox)
             {
@@ -277,6 +284,11 @@ namespace pylorak.TinyWall
                 try
                 {
                     SetWindowTheme(listView.Handle, "DarkMode_Explorer", null);
+                    IntPtr hHeader = SendMessage(listView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
+                    if (hHeader != IntPtr.Zero)
+                    {
+                        SetWindowTheme(hHeader, "DarkMode_Explorer", null);
+                    }
                 }
                 catch { }
             }
@@ -419,12 +431,123 @@ namespace pylorak.TinyWall
 
         private static void ListView_DrawItem(object sender, DrawListViewItemEventArgs e)
         {
-            e.DrawDefault = true;
+            if (e.Item?.ListView != null && e.Item.ListView.View == View.Details)
+            {
+                e.DrawDefault = false;
+            }
+            else
+            {
+                e.DrawDefault = true;
+            }
         }
 
         private static void ListView_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
         {
-            e.DrawDefault = true;
+            if (sender is not ListView listView)
+            {
+                e.DrawDefault = true;
+                return;
+            }
+
+            // Draw item background
+            bool isSelected = e.Item.Selected;
+            Color backColor;
+            Color foreColor;
+
+            if (isSelected)
+            {
+                // Premium selection color (deep purple or classic selection color)
+                backColor = Color.FromArgb(70, 40, 110); // Nice dark purple selection background
+                foreColor = TextPrimary; // Keep text white and readable!
+            }
+            else
+            {
+                // Use the custom background color or item background color
+                backColor = e.Item.BackColor == SystemColors.Window ? SurfaceColor : e.Item.BackColor;
+                foreColor = e.Item.ForeColor == SystemColors.WindowText ? TextPrimary : e.Item.ForeColor;
+            }
+
+            // Paint the background
+            using (var brush = new SolidBrush(backColor))
+            {
+                e.Graphics.FillRectangle(brush, e.Bounds);
+            }
+
+            // Draw text
+            var flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+            
+            // Adjust bounds slightly for padding
+            Rectangle textBounds = e.Bounds;
+            textBounds.Offset(4, 0);
+            textBounds.Width -= 8;
+
+            // Draw icon for the first column if available
+            if (e.ColumnIndex == 0 && listView.SmallImageList != null && e.Item.ImageIndex >= 0)
+            {
+                Image img = listView.SmallImageList.Images[e.Item.ImageIndex];
+                int imgY = e.Bounds.Top + (e.Bounds.Height - img.Height) / 2;
+                e.Graphics.DrawImage(img, e.Bounds.Left + 4, imgY);
+                
+                // Adjust text bounds to not overlap with the icon
+                textBounds.X += img.Width + 4;
+                textBounds.Width -= img.Width + 4;
+            }
+            else if (e.ColumnIndex == 0 && listView.SmallImageList != null && !string.IsNullOrEmpty(e.Item.ImageKey))
+            {
+                Image img = listView.SmallImageList.Images[e.Item.ImageKey];
+                if (img != null)
+                {
+                    int imgY = e.Bounds.Top + (e.Bounds.Height - img.Height) / 2;
+                    e.Graphics.DrawImage(img, e.Bounds.Left + 4, imgY);
+                    
+                    textBounds.X += img.Width + 4;
+                    textBounds.Width -= img.Width + 4;
+                }
+            }
+
+            TextRenderer.DrawText(e.Graphics, e.SubItem.Text, e.Item.Font, textBounds, foreColor, flags);
+        }
+
+        private static void Button_Paint(object? sender, PaintEventArgs e)
+        {
+            if (sender is not Button button) return;
+
+            if (!button.Enabled)
+            {
+                // If disabled, we will custom paint the button background and draw the text in a readable gray color.
+                
+                // 1. Draw background
+                using (var backBrush = new SolidBrush(SurfaceColor))
+                {
+                    e.Graphics.FillRectangle(backBrush, button.ClientRectangle);
+                }
+
+                // 2. Draw border
+                using (var borderPen = new Pen(Color.FromArgb(50, 50, 50), 1))
+                {
+                    var rect = new Rectangle(0, 0, button.Width - 1, button.Height - 1);
+                    e.Graphics.DrawRectangle(borderPen, rect);
+                }
+
+                // 3. Draw text in a readable secondary color
+                Color disabledTextColor = Color.FromArgb(120, 120, 120); // nice readable gray text
+                
+                // Draw text center aligned
+                var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak;
+                
+                // Adjust text rectangle for image relation if there is an image
+                Rectangle textRect = button.ClientRectangle;
+                if (button.Image != null)
+                {
+                    ControlPaint.DrawImageDisabled(e.Graphics, button.Image, 6, (button.Height - button.Image.Height) / 2, SurfaceColor);
+                    
+                    // Adjust textRect
+                    textRect = new Rectangle(button.Image.Width + 10, 0, button.Width - button.Image.Width - 15, button.Height);
+                    flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak;
+                }
+
+                TextRenderer.DrawText(e.Graphics, button.Text, button.Font, textRect, disabledTextColor, flags);
+            }
         }
 
         private class TabControlBrush : NativeWindow
