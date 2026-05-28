@@ -39,9 +39,33 @@ cd /d "%REPO_DIR%"
 
 :: Compile the TinyWall C# project first to ensure the staged binaries are fully up-to-date with version.json
 echo [0/5] Compiling TinyWall binaries...
+
+:: Find MSBuild path dynamically using vswhere
+set "MSBUILD_PATH="
+if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" (
+    for /f "tokens=*" %%i in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe') do (
+        set "MSBUILD_PATH=%%i"
+    )
+)
+if not defined MSBUILD_PATH (
+    set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
+)
+
+:: Find .NET SDK path dynamically
+set "DOTNET_SDK_DIR="
+if exist "%ProgramFiles%\dotnet\sdk" (
+    for /f "tokens=*" %%i in ('dir "%ProgramFiles%\dotnet\sdk" /b /ad /o-n') do (
+        if not defined DOTNET_SDK_DIR (
+            set "DOTNET_SDK_DIR=%%i"
+        )
+    )
+)
+if defined DOTNET_SDK_DIR (
+    set "MSBuildSDKsPath=%ProgramFiles%\dotnet\sdk\%DOTNET_SDK_DIR%\Sdks"
+) else (
+    set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
+)
 set "MSBuildEnableWorkloadResolver=false"
-set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
-set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 
 if exist "%MSBUILD_PATH%" (
     "%MSBUILD_PATH%" TinyWall\TinyWall.csproj /t:Rebuild /p:Configuration=Release
@@ -57,10 +81,10 @@ if exist "%MSBUILD_PATH%" (
 )
 echo.
 
-:: 1. Copy latest Release builds to staging folder (C: drive)
+:: 1. Copy latest Release builds to staging folder (%TEMP% directory)
 echo [1/5] Staging latest compiled files...
-if not exist "C:\Users\basil\TinyWallTemp" mkdir "C:\Users\basil\TinyWallTemp"
-xcopy /Y /S /E "TinyWall\bin\Release\*" "C:\Users\basil\TinyWallTemp\"
+if not exist "%TEMP%\TinyWallTemp" mkdir "%TEMP%\TinyWallTemp"
+xcopy /Y /S /E "TinyWall\bin\Release\*" "%TEMP%\TinyWallTemp\"
 if %errorLevel% neq 0 (
     echo ERROR: Failed to stage Release files!
     pause
@@ -68,13 +92,13 @@ if %errorLevel% neq 0 (
 )
 
 :: Remove any temp files from staging folder
-del /F /Q "C:\Users\basil\TinyWallTemp\deploy.bat" >nul 2>&1
-del /F /Q "C:\Users\basil\TinyWallTemp\deploy.log" >nul 2>&1
-del /F /Q "C:\Users\basil\TinyWallTemp\process_icon.py" >nul 2>&1
+del /F /Q "%TEMP%\TinyWallTemp\deploy.bat" >nul 2>&1
+del /F /Q "%TEMP%\TinyWallTemp\deploy.log" >nul 2>&1
+del /F /Q "%TEMP%\TinyWallTemp\process_icon.py" >nul 2>&1
 
 :: 2. Compress files to ZIP archive
 echo [2/5] Compressing custom assets into ZIP...
-powershell.exe -Command "Compress-Archive -Path 'C:\Users\basil\TinyWallTemp\*' -DestinationPath 'TinyWallFiles.zip' -Force"
+powershell.exe -Command "Compress-Archive -Path '%TEMP%\TinyWallTemp\*' -DestinationPath 'TinyWallFiles.zip' -Force"
 if %errorLevel% neq 0 (
     echo ERROR: Failed to create ZIP archive!
     pause
@@ -83,10 +107,6 @@ if %errorLevel% neq 0 (
 
 :: 3. Restore NuGet packages for installer
 echo [3/5] Restoring installer dependencies...
-set "MSBuildEnableWorkloadResolver=false"
-set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
-set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
-
 if exist "%MSBUILD_PATH%" (
     "%MSBUILD_PATH%" TinyWallJellyModeInstaller\TinyWallJellyModeInstaller.csproj /t:Restore
 ) else (

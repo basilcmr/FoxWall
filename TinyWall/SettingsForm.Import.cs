@@ -74,8 +74,11 @@ namespace pylorak.TinyWall
             mnuQuickAllow.Click += (s, e) => this.HandleQuickPolicyClick(PolicyType.Unrestricted);
             var mnuQuickBlock = new ToolStripMenuItem("Quick Block (Hard Block)", GlobalInstances.CancelBtnIcon);
             mnuQuickBlock.Click += (s, e) => this.HandleQuickPolicyClick(PolicyType.HardBlock);
+            var mnuQuickBlockInherit = new ToolStripMenuItem("Quick Block (Hard Block + Inherit)", GlobalInstances.CancelBtnIcon);
+            mnuQuickBlockInherit.Click += (s, e) => this.HandleQuickPolicyClick(PolicyType.HardBlock, true);
             mnuQuickPolicy.DropDownItems.Add(mnuQuickAllow);
             mnuQuickPolicy.DropDownItems.Add(mnuQuickBlock);
+            mnuQuickPolicy.DropDownItems.Add(mnuQuickBlockInherit);
             
             var mnuAuditSockets = new ToolStripMenuItem("Audit Active Sockets...", GlobalInstances.UpdateBtnIcon);
             mnuAuditSockets.Click += (s, e) => this.HandleAuditSocketsClick();
@@ -118,7 +121,7 @@ namespace pylorak.TinyWall
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.1.2", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.1.3", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
@@ -263,7 +266,7 @@ namespace pylorak.TinyWall
             }
         }
 
-        private void HandleQuickPolicyClick(PolicyType policyType)
+        private void HandleQuickPolicyClick(PolicyType policyType, bool? childProcessesInherit = null)
         {
             if (listApplications.SelectedIndices.Count == 0) return;
 
@@ -281,6 +284,11 @@ namespace pylorak.TinyWall
                     else if (policyType == PolicyType.Unrestricted)
                     {
                         ex.Policy = new UnrestrictedPolicy() { LocalNetworkOnly = false };
+                    }
+
+                    if (childProcessesInherit.HasValue)
+                    {
+                        ex.ChildProcessesInherit = childProcessesInherit.Value;
                     }
                 }
 

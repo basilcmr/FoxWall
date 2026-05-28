@@ -49,9 +49,33 @@ if %errorLevel% neq 0 (
 
 :: 2. Rebuild the solution using MSBuild
 echo [2/4] Rebuilding TinyWall solution...
+
+:: Find MSBuild path dynamically using vswhere
+set "MSBUILD_PATH="
+if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" (
+    for /f "tokens=*" %%i in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe') do (
+        set "MSBUILD_PATH=%%i"
+    )
+)
+if not defined MSBUILD_PATH (
+    set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
+)
+
+:: Find .NET SDK path dynamically
+set "DOTNET_SDK_DIR="
+if exist "%ProgramFiles%\dotnet\sdk" (
+    for /f "tokens=*" %%i in ('dir "%ProgramFiles%\dotnet\sdk" /b /ad /o-n') do (
+        if not defined DOTNET_SDK_DIR (
+            set "DOTNET_SDK_DIR=%%i"
+        )
+    )
+)
+if defined DOTNET_SDK_DIR (
+    set "MSBuildSDKsPath=%ProgramFiles%\dotnet\sdk\%DOTNET_SDK_DIR%\Sdks"
+) else (
+    set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
+)
 set "MSBuildEnableWorkloadResolver=false"
-set "MSBuildSDKsPath=C:\Program Files\dotnet\sdk\9.0.203\Sdks"
-set "MSBUILD_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 
 if exist "%MSBUILD_PATH%" (
     :: Run MSBuild directly on the TinyWall project
@@ -72,12 +96,12 @@ if %errorLevel% neq 0 (
     exit /b
 )
 
-:: 3. Stage compiled files to C: drive temp folder
-echo [3/4] Staging compiled files to C:\Users\basil\TinyWallTemp...
-if not exist "C:\Users\basil\TinyWallTemp" mkdir "C:\Users\basil\TinyWallTemp"
-xcopy /Y /S /E "TinyWall\bin\Release\*" "C:\Users\basil\TinyWallTemp\"
+:: 3. Stage compiled files to TEMP drive folder
+echo [3/4] Staging compiled files to %TEMP%\TinyWallTemp...
+if not exist "%TEMP%\TinyWallTemp" mkdir "%TEMP%\TinyWallTemp"
+xcopy /Y /S /E "TinyWall\bin\Release\*" "%TEMP%\TinyWallTemp\"
 if %errorLevel% neq 0 (
-    echo ERROR: Failed to stage files to C: drive!
+    echo ERROR: Failed to stage files to TEMP directory!
     pause
     exit /b
 )
@@ -100,7 +124,7 @@ echo timeout /t 2 /nobreak ^>nul
 echo echo Copying new binaries to Program Files...
 echo set "DEST_DIR=C:\Program Files (x86)\TinyWall"
 echo if not exist "%%DEST_DIR%%" mkdir "%%DEST_DIR%%"
-echo xcopy /Y /S /E "C:\Users\basil\TinyWallTemp\*" "%%DEST_DIR%%\"
+echo xcopy /Y /S /E "%TEMP%\TinyWallTemp\*" "%%DEST_DIR%%\"
 echo echo Registering TinyWall Service...
 echo "%%DEST_DIR%%\TinyWall.exe" /install ^>nul 2^>^&1
 echo echo Starting TinyWall Service...
@@ -110,11 +134,11 @@ echo echo Launching TinyWall Controller...
 echo start "" "%%DEST_DIR%%\TinyWall.exe"
 echo echo Installation Finished successfully!
 echo timeout /t 5 ^>nul
-) > "C:\Users\basil\TinyWallTemp\deploy.bat"
+) > "%TEMP%\TinyWallTemp\deploy.bat"
 
 :: 4. Trigger elevated deployment script
 echo [4/4] Launching elevated installer...
-powershell.exe -Command "Start-Process cmd.exe -ArgumentList '/c C:\Users\basil\TinyWallTemp\deploy.bat' -Verb RunAs"
+powershell.exe -Command "Start-Process cmd.exe -ArgumentList '/c %TEMP%\TinyWallTemp\deploy.bat' -Verb RunAs"
 
 echo.
 echo ==============================================
