@@ -2,6 +2,44 @@ import React, { useState } from 'react';
 import { Search, Cpu, ShieldAlert, Trash2 } from 'lucide-react';
 import ProcessActions from './ProcessActions';
 
+const renderRemoteAddress = (ip, port) => {
+  if (!ip || ip === '*' || ip === '0.0.0.0') return '*';
+  
+  const isPrivate = ip.startsWith('127.') || 
+                    ip.startsWith('192.168.') || 
+                    ip.startsWith('10.') || 
+                    ip.startsWith('169.254.') || 
+                    ip.startsWith('255.255.255.255') || 
+                    (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31);
+
+  if (isPrivate) {
+    return (
+      <span style={{ color: 'var(--text-secondary)' }} title="Private/Local Network IP">
+        {ip}:{port}
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={`https://ipinfo.io/${ip}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        color: 'var(--accent-color)',
+        textDecoration: 'none',
+        borderBottom: '1px dashed rgba(224, 64, 251, 0.4)',
+        cursor: 'pointer'
+      }}
+      title="Lookup IP Info (External Service)"
+      onMouseOver={(e) => { e.currentTarget.style.borderBottom = '1px solid var(--accent-color)'; }}
+      onMouseOut={(e) => { e.currentTarget.style.borderBottom = '1px dashed rgba(224, 64, 251, 0.4)'; }}
+    >
+      {ip}:{port}
+    </a>
+  );
+};
+
 export default function SocketsFeed({
   socketData,
   logData,
@@ -135,7 +173,7 @@ export default function SocketsFeed({
                     </td>
                     <td><span className="protocol-badge">{s.Protocol}</span></td>
                     <td>{s.LocalAddress}:{s.LocalPort}</td>
-                    <td>{isListen ? '*' : `${s.RemoteAddress}:${s.RemotePort}`}</td>
+                    <td>{isListen ? '*' : renderRemoteAddress(s.RemoteAddress, s.RemotePort)}</td>
                     <td><span className={`state-badge ${badgeClass}`}>{s.State}</span></td>
                     <td>{s.Time}</td>
                     <td>

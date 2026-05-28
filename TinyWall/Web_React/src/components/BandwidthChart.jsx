@@ -377,11 +377,11 @@ export default function BandwidthChart({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
               <span style={{ color: 'var(--success-color)', fontSize: '10px' }}>●</span>
-              <span style={{ fontSize: '12px' }}>Down: <strong style={{ color: 'white' }}>{formatSpeed(tooltipData.point.Rx)}</strong></span>
+              <span style={{ fontSize: '12px' }}>Down: <strong style={{ color: 'var(--success-color)' }}>{formatSpeed(tooltipData.point.Rx)}</strong></span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <span style={{ color: 'var(--accent-color)', fontSize: '10px' }}>●</span>
-              <span style={{ fontSize: '12px' }}>Up: <strong style={{ color: 'white' }}>{formatSpeed(tooltipData.point.Tx)}</strong></span>
+              <span style={{ fontSize: '12px' }}>Up: <strong style={{ color: 'var(--accent-color)' }}>{formatSpeed(tooltipData.point.Tx)}</strong></span>
             </div>
             <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
@@ -392,13 +392,31 @@ export default function BandwidthChart({
                 tooltipData.point.PeakTask.split(';').map((t, idx) => {
                   const parts = t.split(' (');
                   const name = parts[0];
-                  const speed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+                  const rawSpeed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+                  
+                  const match = rawSpeed.match(/(\d+)\s+connections?\s*-\s*(.+)/);
+                  
+                  let connText = '';
+                  let rateText = rawSpeed;
+                  
+                  if (match) {
+                    connText = `${match[1]}c`;
+                    rateText = match[2];
+                  }
+
+                  const isDownloadDominant = (tooltipData.point.Rx || 0) > (tooltipData.point.Tx || 0);
+                  const rateColor = isDownloadDominant ? 'var(--success-color)' : 'var(--accent-color)';
+
                   return (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginTop: '5px', fontSize: '11px' }}>
                       <span style={{ color: 'white', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ color: 'var(--accent-color)', fontSize: '8px' }}>▶</span> {idx + 1}. {name}
                       </span>
-                      <span style={{ color: '#ffcc00', fontWeight: 600 }}>{speed}</span>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', fontWeight: 600 }}>
+                        {connText && <span style={{ color: '#ffcc00' }}>{connText}</span>}
+                        {connText && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
+                        <span style={{ color: rateColor }}>{rateText}</span>
+                      </div>
                     </div>
                   );
                 })

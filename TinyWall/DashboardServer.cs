@@ -221,7 +221,7 @@ namespace pylorak.TinyWall
                     // Aggregate stats
                     responseData = new
                     {
-                        mode = "Normal", // Default placeholder
+                        mode = GlobalInstances.TinyWallControllerInstance?.ActiveModeName ?? "Normal",
                         locked = GlobalInstances.Controller.IsServerLocked,
                         rxSpeed = HistoryLogger.CurrentRx,
                         txSpeed = HistoryLogger.CurrentTx,

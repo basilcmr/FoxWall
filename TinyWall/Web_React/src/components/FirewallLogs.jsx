@@ -2,6 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { Search, Shield, PlusCircle, Calendar } from 'lucide-react';
 import ProcessActions from './ProcessActions';
 
+const renderRemoteAddress = (ip, port) => {
+  if (!ip || ip === '*' || ip === '0.0.0.0') return '*';
+  
+  const isPrivate = ip.startsWith('127.') || 
+                    ip.startsWith('192.168.') || 
+                    ip.startsWith('10.') || 
+                    ip.startsWith('169.254.') || 
+                    ip.startsWith('255.255.255.255') || 
+                    (ip.startsWith('172.') && parseInt(ip.split('.')[1]) >= 16 && parseInt(ip.split('.')[1]) <= 31);
+
+  if (isPrivate) {
+    return (
+      <span style={{ color: 'var(--text-secondary)' }} title="Private/Local Network IP">
+        {ip}:{port}
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={`https://ipinfo.io/${ip}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        color: 'var(--accent-color)',
+        textDecoration: 'none',
+        borderBottom: '1px dashed rgba(224, 64, 251, 0.4)',
+        cursor: 'pointer'
+      }}
+      title="Lookup IP Info (External Service)"
+      onMouseOver={(e) => { e.currentTarget.style.borderBottom = '1px solid var(--accent-color)'; }}
+      onMouseOut={(e) => { e.currentTarget.style.borderBottom = '1px dashed rgba(224, 64, 251, 0.4)'; }}
+    >
+      {ip}:{port}
+    </a>
+  );
+};
+
 export default function FirewallLogs({
   logData,
   socketData,
@@ -279,7 +317,7 @@ export default function FirewallLogs({
                     <td><span className="protocol-badge">{l.Protocol}</span></td>
                     <td>{l.Direction}</td>
                     <td>{l.LocalAddress}:{l.LocalPort}</td>
-                    <td>{l.RemoteAddress}:{l.RemotePort}</td>
+                    <td>{renderRemoteAddress(l.RemoteAddress, l.RemotePort)}</td>
                     <td><span className={`state-badge ${badgeClass}`}>{l.Action}</span></td>
                     <td>
                       <button className="action-btn" title="Quick Whitelist App" onClick={() => quickWhitelist(l.Path)}>

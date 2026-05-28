@@ -298,6 +298,22 @@ namespace pylorak.TinyWall
         // [FoxWall Enhancement] - Start of Custom Web Dashboard Declarations
         private System.Windows.Forms.ToolStripMenuItem mnuSecurityMonitor;
         private DashboardServer? DashboardServerInstance;
+        public string ActiveModeName
+        {
+            get
+            {
+                return FirewallState.Mode switch
+                {
+                    FirewallMode.Normal => "Normal",
+                    FirewallMode.BlockAll => "Block All",
+                    FirewallMode.AllowOutgoing => "Allow Outgoing",
+                    FirewallMode.Learning => "Learning",
+                    FirewallMode.Disabled => "Disabled",
+                    FirewallMode.JellyMode => "Jelly Mode",
+                    _ => "Unknown"
+                };
+            }
+        }
         // [FoxWall Enhancement] - End of Custom Web Dashboard Declarations
 
         #endregion
