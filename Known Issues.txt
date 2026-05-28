@@ -1,1 +1,2 @@
-Historical Throughput Breakdown: actions virustotal is not using hash, jsut name in url
+Historical Throughput Breakdown: actions virustotal is not using hash, jsut name in url, 
+Search app name and process name is same, may not be using the same component there
