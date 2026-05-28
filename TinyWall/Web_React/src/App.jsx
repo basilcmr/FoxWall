@@ -29,7 +29,7 @@ export default function App() {
 
   // Modal control states
   const [copyModalData, setCopyModalData] = useState({ isOpen: false, name: '', path: '' });
-  const [searchModalData, setSearchModalData] = useState({ isOpen: false, name: '', path: '' });
+  const [searchModalData, setSearchModalData] = useState({ isOpen: false, name: '', path: '', appName: '' });
   const [clickModalData, setClickModalData] = useState({ isOpen: false, point: null });
 
   // Floating Toast Notifications state
@@ -296,7 +296,7 @@ export default function App() {
               socketData={socketData}
               logData={logData}
               onOpenCopy={(name, path) => setCopyModalData({ isOpen: true, name, path })}
-              onOpenSearch={(name, path) => setSearchModalData({ isOpen: true, name, path })}
+              onOpenSearch={(name, path, appName) => setSearchModalData({ isOpen: true, name, path, appName })}
               searchVirusTotal={searchVirusTotal}
               terminateProcess={terminateProcess}
             />
@@ -309,7 +309,7 @@ export default function App() {
               socketData={socketData}
               logData={logData}
               onOpenCopy={(name, path) => setCopyModalData({ isOpen: true, name, path })}
-              onOpenSearch={(name, path) => setSearchModalData({ isOpen: true, name, path })}
+              onOpenSearch={(name, path, appName) => setSearchModalData({ isOpen: true, name, path, appName })}
               searchVirusTotal={searchVirusTotal}
               formatSpeed={formatSpeed}
               detailedTooltipCheck={detailedTooltipCheck}
@@ -341,7 +341,7 @@ export default function App() {
               logData={logData}
               socketData={socketData}
               onOpenCopy={(name, path) => setCopyModalData({ isOpen: true, name, path })}
-              onOpenSearch={(name, path) => setSearchModalData({ isOpen: true, name, path })}
+              onOpenSearch={(name, path, appName) => setSearchModalData({ isOpen: true, name, path, appName })}
               searchVirusTotal={searchVirusTotal}
               quickWhitelist={quickWhitelist}
             />
@@ -376,9 +376,10 @@ export default function App() {
 
       <SearchOptionsModal
         isOpen={searchModalData.isOpen}
-        onClose={() => setSearchModalData({ isOpen: false, name: '', path: '' })}
+        onClose={() => setSearchModalData({ isOpen: false, name: '', path: '', appName: '' })}
         name={searchModalData.name}
         path={searchModalData.path}
+        appName={searchModalData.appName}
       />
 
       <ChartClickDetailModal
@@ -388,7 +389,7 @@ export default function App() {
         socketData={socketData}
         logData={logData}
         onOpenCopy={(name, path) => setCopyModalData({ isOpen: true, name, path })}
-        onOpenSearch={(name, path) => setSearchModalData({ isOpen: true, name, path })}
+        onOpenSearch={(name, path, appName) => setSearchModalData({ isOpen: true, name, path, appName })}
         searchVirusTotal={searchVirusTotal}
         formatSpeed={formatSpeed}
       />

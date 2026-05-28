@@ -347,6 +347,22 @@ namespace pylorak.TinyWall
             }
         }
 
+        private string GetFileDescription(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return "";
+            try
+            {
+                string resolved = WildcardHelper.ResolveWildcardPath(path);
+                if (File.Exists(resolved))
+                {
+                    var info = FileVersionInfo.GetVersionInfo(resolved);
+                    return info.FileDescription ?? "";
+                }
+            }
+            catch {}
+            return "";
+        }
+
         private List<object> GetActiveConnections()
         {
             var results = new List<object>();
@@ -367,6 +383,7 @@ namespace pylorak.TinyWall
                     {
                         ProcessName = name,
                         Path = path,
+                        AppName = GetFileDescription(path),
                         Pid = row.ProcessId,
                         Protocol = "TCP",
                         LocalAddress = row.LocalEndPoint.Address.ToString(),
@@ -391,6 +408,7 @@ namespace pylorak.TinyWall
                     {
                         ProcessName = name,
                         Path = path,
+                        AppName = GetFileDescription(path),
                         Pid = row.ProcessId,
                         Protocol = "UDP",
                         LocalAddress = row.LocalEndPoint.Address.ToString(),
@@ -428,6 +446,7 @@ namespace pylorak.TinyWall
                         Time = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
                         ProcessName = Path.GetFileName(entry.AppPath) ?? "System",
                         Path = entry.AppPath,
+                        AppName = GetFileDescription(entry.AppPath),
                         Pid = entry.ProcessId,
                         Protocol = entry.Protocol.ToString(),
                         Direction = entry.Direction.ToString(),

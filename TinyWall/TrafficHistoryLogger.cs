@@ -71,7 +71,7 @@ namespace pylorak.TinyWall
             {
                 var procCache = new Dictionary<uint, string>();
                 TcpTable tcpTable = NetStat.GetExtendedTcp4Table(false);
-                var activeProcesses = new List<string>();
+                var activeProcesses = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
                 foreach (TcpRow row in tcpTable)
                 {
@@ -90,25 +90,9 @@ namespace pylorak.TinyWall
                         procCache[row.ProcessId] = name;
                     }
 
-                    if (name != "System / Services" && !activeProcesses.Contains(name))
+                    if (name != "System / Services")
                     {
-                        activeProcesses.Add(name);
-                    }
-                }
-
-                if (activeProcesses.Count > 0)
-                {
-                    var taskList = new List<string>();
-                    // Attribute bandwidth dynamically to up to 4 heavy processes
-                    int count = Math.Min(activeProcesses.Count, 4);
-                    double remainingShare = 1.0;
-
-                    for (int i = 0; i < count; i++)
-                    {
-                        double share = (i == count - 1) ? remainingShare : (remainingShare * (0.4 + (DateTime.Now.Second % 5) * 0.05));
-                        remainingShare -= share;
-
-                        string app = activeProcesses[i];
+                        string app = name;
                         if (app.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                         {
                             app = app.Substring(0, app.Length - 4);
@@ -118,15 +102,37 @@ namespace pylorak.TinyWall
                             app = char.ToUpper(app[0]) + app.Substring(1);
                         }
 
-                        long appBytes = (long)(totalBytes * share);
-                        taskList.Add($"{app} ({FormatSpeed(appBytes)})");
+                        if (activeProcesses.ContainsKey(app))
+                        {
+                            activeProcesses[app]++;
+                        }
+                        else
+                        {
+                            activeProcesses[app] = 1;
+                        }
+                    }
+                }
+
+                if (activeProcesses.Count > 0)
+                {
+                    var sortedList = new List<KeyValuePair<string, int>>(activeProcesses);
+                    sortedList.Sort((x, y) => y.Value.CompareTo(x.Value));
+
+                    var taskList = new List<string>();
+                    int count = Math.Min(sortedList.Count, 4);
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        var pair = sortedList[i];
+                        string connText = pair.Value == 1 ? "1 connection" : $"{pair.Value} connections";
+                        taskList.Add($"{pair.Key} ({connText})");
                     }
                     return string.Join(";", taskList);
                 }
             }
             catch { }
 
-            return $"System Service ({FormatSpeed((long)(totalBytes * 0.8))})";
+            return "System Services (Active)";
         }
 
         private static string FormatSpeed(long bytesPerSec)

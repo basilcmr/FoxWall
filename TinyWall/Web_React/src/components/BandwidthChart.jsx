@@ -235,7 +235,7 @@ export default function BandwidthChart({
   const processCounts = {};
   socketData.forEach((s) => {
     if (!processCounts[s.ProcessName]) {
-      processCounts[s.ProcessName] = { name: s.ProcessName, count: 0 };
+      processCounts[s.ProcessName] = { name: s.ProcessName, count: 0, path: s.Path, fileHash: s.FileHash };
     }
     processCounts[s.ProcessName].count++;
   });
@@ -440,8 +440,8 @@ export default function BandwidthChart({
                       {a.name}
                       <ProcessActions
                         processName={a.name}
-                        path=""
-                        fileHash=""
+                        path={a.path}
+                        fileHash={a.fileHash}
                         socketData={socketData}
                         logData={logData}
                         onOpenCopy={onOpenCopy}

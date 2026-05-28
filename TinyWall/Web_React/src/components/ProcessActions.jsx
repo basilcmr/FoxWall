@@ -15,29 +15,42 @@ export default function ProcessActions({
   // Centralized resolution of path and fileHash
   let resolvedPath = path || '';
   let resolvedHash = fileHash || '';
+  let resolvedAppName = '';
 
   // Look up real path and hash from live/log data if missing
   const cleanName = processName ? processName.trim() : '';
-  if (cleanName && (!resolvedPath || !resolvedHash)) {
+  if (cleanName) {
     const socketMatch = socketData.find(
-      (s) => s.ProcessName && s.ProcessName.toLowerCase() === cleanName.toLowerCase()
+      (s) => {
+        if (!s.ProcessName) return false;
+        const sName = s.ProcessName.toLowerCase();
+        const cName = cleanName.toLowerCase();
+        return sName === cName || sName === `${cName}.exe` || `${sName}.exe` === cName || sName.replace(/\.exe$/, '') === cName.replace(/\.exe$/, '');
+      }
     );
     if (socketMatch) {
       if (!resolvedPath) resolvedPath = socketMatch.Path;
       if (!resolvedHash) resolvedHash = socketMatch.FileHash;
+      resolvedAppName = socketMatch.AppName || '';
     } else {
       const logMatch = logData.find(
-        (l) => l.ProcessName && l.ProcessName.toLowerCase() === cleanName.toLowerCase()
+        (l) => {
+          if (!l.ProcessName) return false;
+          const lName = l.ProcessName.toLowerCase();
+          const cName = cleanName.toLowerCase();
+          return lName === cName || lName === `${cName}.exe` || `${lName}.exe` === cName || lName.replace(/\.exe$/, '') === cName.replace(/\.exe$/, '');
+        }
       );
       if (logMatch) {
         if (!resolvedPath) resolvedPath = logMatch.Path;
         if (!resolvedHash) resolvedHash = logMatch.FileHash;
+        resolvedAppName = logMatch.AppName || '';
       }
     }
   }
 
   if (!resolvedPath && cleanName) {
-    resolvedPath = `C:\\Windows\\System32\\${cleanName}.exe`;
+    resolvedPath = `C:\\Windows\\System32\\${cleanName.endsWith('.exe') ? cleanName : `${cleanName}.exe`}`;
   }
 
   const safePath = resolvedPath.replace(/\\/g, '\\\\');
@@ -63,7 +76,7 @@ export default function ProcessActions({
         title="Search Google"
         onClick={(e) => {
           e.stopPropagation();
-          onOpenSearch(cleanName, resolvedPath);
+          onOpenSearch(cleanName, resolvedPath, resolvedAppName);
         }}
       >
         <Search size={12} />

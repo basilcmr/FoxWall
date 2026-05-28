@@ -68,19 +68,20 @@ export function CopyOptionsModal({ isOpen, onClose, name, path, showToast }) {
 }
 
 // 2. Google Search Options Modal
-export function SearchOptionsModal({ isOpen, onClose, name, path }) {
+export function SearchOptionsModal({ isOpen, onClose, name, path, appName }) {
   const [searchField, setSearchField] = useState('name');
   const [usePrompt, setUsePrompt] = useState(true);
   const [promptQuery, setPromptQuery] = useState('');
 
-  const fileName = path ? path.split('\\').pop().split('.').shift() : name;
+  const displayAppName = appName && appName.trim().length > 0 ? appName : name;
+  const fileName = path ? path.split('\\').pop() : name;
 
   useEffect(() => {
     if (isOpen) {
-      const term = searchField === 'name' ? name : fileName;
+      const term = searchField === 'name' ? displayAppName : fileName;
       setPromptQuery(`is ${term} safe legitimate or malware virus`);
     }
-  }, [isOpen, searchField, name, fileName]);
+  }, [isOpen, searchField, displayAppName, fileName]);
 
   if (!isOpen) return null;
 
@@ -89,7 +90,7 @@ export function SearchOptionsModal({ isOpen, onClose, name, path }) {
     if (usePrompt && promptQuery.trim().length > 0) {
       finalQuery = promptQuery;
     } else {
-      const term = searchField === 'name' ? name : fileName;
+      const term = searchField === 'name' ? displayAppName : fileName;
       finalQuery = `is ${term} safe legitimate or malware virus`;
     }
     window.open(`https://www.google.com/search?q=${encodeURIComponent(finalQuery)}`, '_blank');
@@ -110,14 +111,14 @@ export function SearchOptionsModal({ isOpen, onClose, name, path }) {
           <label className="modal-option-row">
             <input type="radio" name="searchField" value="name" checked={searchField === 'name'} onChange={() => setSearchField('name')} />
             <div className="option-info">
-              <span className="option-title">Search Process Name</span>
-              <span className="option-desc">{name}</span>
+              <span className="option-title">Search Application Name</span>
+              <span className="option-desc">{displayAppName}</span>
             </div>
           </label>
           <label className="modal-option-row">
             <input type="radio" name="searchField" value="path" checked={searchField === 'path'} onChange={() => setSearchField('path')} />
             <div className="option-info">
-              <span className="option-title">Search File Name</span>
+              <span className="option-title">Search Binary File</span>
               <span className="option-desc">{fileName}</span>
             </div>
           </label>
