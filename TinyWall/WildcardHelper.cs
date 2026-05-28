@@ -10,13 +10,18 @@ namespace pylorak.TinyWall
             if (string.IsNullOrEmpty(wildcardPattern) || string.IsNullOrEmpty(text))
                 return false;
 
-            // Simple translation of wildcard pattern to regex (* and ? support)
-            string regexPattern = "^" + Regex.Escape(wildcardPattern)
-                                              .Replace("\\*", ".*")
-                                              .Replace("\\?", ".") + "$";
             try
             {
-                return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase);
+                // Normalize paths by expanding environment variables, replacing slashes, and trimming
+                string pattern = Environment.ExpandEnvironmentVariables(wildcardPattern).Replace('/', '\\').Trim();
+                string target = Environment.ExpandEnvironmentVariables(text).Replace('/', '\\').Trim();
+
+                // Simple translation of wildcard pattern to regex (* and ? support)
+                string regexPattern = "^" + Regex.Escape(pattern)
+                                                  .Replace("\\*", ".*")
+                                                  .Replace("\\?", ".") + "$";
+
+                return Regex.IsMatch(target, regexPattern, RegexOptions.IgnoreCase);
             }
             catch
             {
@@ -29,18 +34,46 @@ namespace pylorak.TinyWall
             if (string.IsNullOrEmpty(wildcardPath))
                 return wildcardPath;
 
-            if (!wildcardPath.Contains("*") && !wildcardPath.Contains("?"))
-                return wildcardPath;
+            try
+            {
+                var resolved = ResolveAllWildcardPaths(wildcardPath);
+                if (resolved != null && resolved.Count > 0)
+                    return resolved[0];
+            }
+            catch
+            {
+                // Fallback
+            }
+
+            return wildcardPath;
+        }
+
+        public static System.Collections.Generic.List<string> ResolveAllWildcardPaths(string wildcardPath)
+        {
+            var results = new System.Collections.Generic.List<string>();
+            if (string.IsNullOrEmpty(wildcardPath))
+                return results;
+
+            // Expand environment variables
+            string expandedPath = Environment.ExpandEnvironmentVariables(wildcardPath);
+
+            if (!expandedPath.Contains("*") && !expandedPath.Contains("?"))
+            {
+                string normPath = expandedPath.Replace('/', '\\');
+                if (System.IO.File.Exists(normPath))
+                    results.Add(normPath);
+                return results;
+            }
 
             try
             {
-                string[] segments = wildcardPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] segments = expandedPath.Split(new[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
                 if (segments.Length == 0)
-                    return wildcardPath;
+                    return results;
 
                 // Handle drive letter prefix or UNC path prefix
-                string currentPath = wildcardPath.StartsWith("\\\\") ? "\\\\" : "";
-                if (wildcardPath.Contains(":") && segments[0].Contains(":"))
+                string currentPath = expandedPath.StartsWith("\\\\") ? "\\\\" : "";
+                if (expandedPath.Contains(":") && segments[0].Contains(":"))
                 {
                     currentPath = segments[0] + "\\";
                     string[] temp = new string[segments.Length - 1];
@@ -48,45 +81,71 @@ namespace pylorak.TinyWall
                     segments = temp;
                 }
 
-                return ResolveSegments(currentPath, segments, 0);
+                ResolveSegmentsRecursive(currentPath, segments, 0, results);
             }
             catch
             {
-                return wildcardPath;
+                // Ignore errors
             }
+
+            return results;
         }
 
-        private static string ResolveSegments(string basePath, string[] segments, int index)
+        private static void ResolveSegmentsRecursive(string basePath, string[] segments, int index, System.Collections.Generic.List<string> results)
         {
+            // Safeguard against too many matches
+            if (results.Count > 100)
+                return;
+
             if (index >= segments.Length)
             {
                 if (System.IO.File.Exists(basePath))
-                    return basePath;
-                return "";
+                {
+                    if (!results.Contains(basePath))
+                        results.Add(basePath);
+                }
+                return;
             }
 
             string segment = segments[index];
             if (segment.Contains("*") || segment.Contains("?"))
             {
                 if (!System.IO.Directory.Exists(basePath))
-                    return "";
+                    return;
 
                 if (index == segments.Length - 1)
                 {
-                    string[] files = System.IO.Directory.GetFiles(basePath, segment);
-                    if (files != null && files.Length > 0)
-                        return files[0];
+                    // Last segment: match files. If segment is "*", search all directories recursively to support directory rules
+                    string[] files;
+                    if (segment == "*")
+                    {
+                        files = System.IO.Directory.GetFiles(basePath, "*", System.IO.SearchOption.AllDirectories);
+                    }
+                    else
+                    {
+                        files = System.IO.Directory.GetFiles(basePath, segment);
+                    }
+
+                    if (files != null)
+                    {
+                        foreach (string file in files)
+                        {
+                            if (results.Count > 100)
+                                break;
+                            if (!results.Contains(file))
+                                results.Add(file);
+                        }
+                    }
                 }
                 else
                 {
+                    // Directory segment: match directories and continue recursively
                     string[] dirs = System.IO.Directory.GetDirectories(basePath, segment);
                     if (dirs != null)
                     {
                         foreach (string dir in dirs)
                         {
-                            string resolved = ResolveSegments(dir, segments, index + 1);
-                            if (!string.IsNullOrEmpty(resolved))
-                                return resolved;
+                            ResolveSegmentsRecursive(dir, segments, index + 1, results);
                         }
                     }
                 }
@@ -97,20 +156,19 @@ namespace pylorak.TinyWall
                 if (index == segments.Length - 1)
                 {
                     if (System.IO.File.Exists(nextPath))
-                        return nextPath;
+                    {
+                        if (!results.Contains(nextPath))
+                            results.Add(nextPath);
+                    }
                 }
                 else
                 {
                     if (System.IO.Directory.Exists(nextPath))
                     {
-                        string resolved = ResolveSegments(nextPath, segments, index + 1);
-                        if (!string.IsNullOrEmpty(resolved))
-                            return resolved;
+                        ResolveSegmentsRecursive(nextPath, segments, index + 1, results);
                     }
                 }
             }
-
-            return "";
         }
     }
 }

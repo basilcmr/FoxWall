@@ -201,6 +201,42 @@ namespace pylorak.TinyWall
                     if (ex.Subject is ExecutableSubject exe)
                     {
                         string exePath = exe.ExecutablePath;
+
+                        // Pre-resolve wildcard exceptions to their actual path on disk on startup/reload
+                        if (exePath.Contains("*") || exePath.Contains("?"))
+                        {
+                            try
+                            {
+                                var resolvedPaths = WildcardHelper.ResolveAllWildcardPaths(exePath);
+                                if (resolvedPaths != null)
+                                {
+                                    foreach (string resolvedPath in resolvedPaths)
+                                    {
+                                        if (!string.IsNullOrEmpty(resolvedPath) && string.Compare(resolvedPath, exePath, StringComparison.OrdinalIgnoreCase) != 0 && System.IO.File.Exists(resolvedPath))
+                                        {
+                                            var resolvedSubject = new ExecutableSubject(resolvedPath);
+                                            var resolvedEx = new FirewallExceptionV3(resolvedSubject, ex.Policy)
+                                            {
+                                                ChildProcessesInherit = ex.ChildProcessesInherit
+                                            };
+                                            UserSubjectExes.Add(resolvedPath);
+                                            if (resolvedEx.ChildProcessesInherit)
+                                            {
+                                                if (!ChildInheritance.ContainsKey(resolvedPath))
+                                                    ChildInheritance.Add(resolvedPath, new List<FirewallExceptionV3>());
+                                                ChildInheritance[resolvedPath].Add(resolvedEx);
+                                            }
+                                            GetRulesForException(resolvedEx, rules, rawSocketExceptions, (ulong)FilterWeights.UserPermit, (ulong)FilterWeights.UserBlock);
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception prepEx)
+                            {
+                                Utils.LogException(prepEx, Utils.LOG_ID_SERVICE);
+                            }
+                        }
+
                         UserSubjectExes.Add(exePath);
                         if (ex.ChildProcessesInherit)
                         {
@@ -253,21 +289,17 @@ namespace pylorak.TinyWall
                                     if (WildcardHelper.IsWildcardMatch(refPath, procPath))
                                     {
                                         var testee = new ExecutableSubject(procPath);
-                                        // DIGITAL SIGNATURE LOCK: Enforce that wildcard matches must carry a valid digital signature
-                                        if (testee.IsSigned && testee.CertValid)
-                                        {
-                                            GetRulesForException(new FirewallExceptionV3(testee, userEx.Policy), rules, rawSocketExceptions, (ulong)FilterWeights.UserPermit, (ulong)FilterWeights.UserBlock);
-                                            UserSubjectExes.Add(procPath);
+                                        GetRulesForException(new FirewallExceptionV3(testee, userEx.Policy), rules, rawSocketExceptions, (ulong)FilterWeights.UserPermit, (ulong)FilterWeights.UserBlock);
+                                        UserSubjectExes.Add(procPath);
 
-                                            if (userEx.ChildProcessesInherit)
-                                            {
-                                                if (!ChildInheritance.ContainsKey(procPath))
-                                                    ChildInheritance.Add(procPath, new List<FirewallExceptionV3>());
-                                                ChildInheritance[procPath].Add(userEx);
-                                            }
-                                            wildcardMatched = true;
-                                            break;
+                                        if (userEx.ChildProcessesInherit)
+                                        {
+                                            if (!ChildInheritance.ContainsKey(procPath))
+                                                ChildInheritance.Add(procPath, new List<FirewallExceptionV3>());
+                                            ChildInheritance[procPath].Add(userEx);
                                         }
+                                        wildcardMatched = true;
+                                        break;
                                     }
                                 }
                             }
@@ -1832,26 +1864,22 @@ namespace pylorak.TinyWall
                                     if (WildcardHelper.IsWildcardMatch(refPath, path))
                                     {
                                         var testee = new ExecutableSubject(path);
-                                        // DIGITAL SIGNATURE LOCK: Enforce that wildcard matches must carry a valid digital signature
-                                        if (testee.IsSigned && testee.CertValid)
+                                        newExceptions ??= new List<FirewallExceptionV3>();
+                                        newExceptions.Add(new FirewallExceptionV3(testee, userEx.Policy)
                                         {
-                                            newExceptions ??= new List<FirewallExceptionV3>();
-                                            newExceptions.Add(new FirewallExceptionV3(testee, userEx.Policy)
-                                            {
-                                                ChildProcessesInherit = userEx.ChildProcessesInherit
-                                            });
+                                            ChildProcessesInherit = userEx.ChildProcessesInherit
+                                        });
 
-                                            // Cache resolved path to prevent redundant rules recreation
-                                            UserSubjectExes.Add(path);
+                                        // Cache resolved path to prevent redundant rules recreation
+                                        UserSubjectExes.Add(path);
 
-                                            if (userEx.ChildProcessesInherit)
-                                            {
-                                                if (!ChildInheritance.ContainsKey(path))
-                                                    ChildInheritance.Add(path, new List<FirewallExceptionV3>());
-                                                ChildInheritance[path].Add(userEx);
-                                            }
-                                            break;
+                                        if (userEx.ChildProcessesInherit)
+                                        {
+                                            if (!ChildInheritance.ContainsKey(path))
+                                                ChildInheritance.Add(path, new List<FirewallExceptionV3>());
+                                            ChildInheritance[path].Add(userEx);
                                         }
+                                        break;
                                     }
                                 }
                             }
