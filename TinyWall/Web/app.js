@@ -204,6 +204,7 @@ function renderSocketsTable() {
   tbody.innerHTML = filtered.map(s => {
     const isListen = s.State === 'Listening';
     const badgeClass = isListen ? 'listening' : 'active';
+    const safePath = s.Path.replace(/\\/g, '\\\\');
     
     return `
       <tr>
@@ -214,9 +215,9 @@ function renderSocketsTable() {
               <span class="process-name">
                 ${s.ProcessName}
                 <span class="task-actions-inline">
-                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="copyToClipboard('${s.ProcessName}')">📋</span>
-                  <span class="inline-action-btn" title="Search Google" onclick="searchGoogle('${s.ProcessName}')">🔍</span>
-                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="virusTotalLookup('${s.Path}')">🛡️</span>
+                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${s.ProcessName}', '${safePath}')">📋</span>
+                  <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${s.ProcessName}', '${safePath}')">🔍</span>
+                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${s.FileHash}')">🛡️</span>
                 </span>
               </span>
               <span class="process-pid">PID: ${s.Pid}</span>
@@ -229,7 +230,7 @@ function renderSocketsTable() {
         <td><span class="state-badge ${badgeClass}">${s.State}</span></td>
         <td>${s.Time}</td>
         <td>
-          <button class="action-btn" title="VirusTotal Lookup" onclick="virusTotalLookup('${s.Path}')">🔍</button>
+          <button class="action-btn" title="VirusTotal Lookup" onclick="searchVirusTotal('${safePath}', '${s.FileHash}')">🔍</button>
           <button class="action-btn terminate" title="Terminate Process" onclick="terminateProcess(${s.Pid})">❌</button>
         </td>
       </tr>
@@ -269,6 +270,7 @@ function renderLogsTable() {
   tbody.innerHTML = filtered.map(l => {
     const isBlocked = l.Action === 'Blocked';
     const badgeClass = isBlocked ? 'blocked' : 'active';
+    const safePath = l.Path.replace(/\\/g, '\\\\');
     
     return `
       <tr>
@@ -280,9 +282,9 @@ function renderLogsTable() {
               <span class="process-name">
                 ${l.ProcessName}
                 <span class="task-actions-inline">
-                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="copyToClipboard('${l.ProcessName}')">📋</span>
-                  <span class="inline-action-btn" title="Search Google" onclick="searchGoogle('${l.ProcessName}')">🔍</span>
-                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="virusTotalLookup('${l.Path}')">🛡️</span>
+                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${l.ProcessName}', '${safePath}')">📋</span>
+                  <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${l.ProcessName}', '${safePath}')">🔍</span>
+                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '${l.FileHash}')">🛡️</span>
                 </span>
               </span>
               <span class="process-pid">PID: ${l.Pid}</span>
@@ -295,7 +297,7 @@ function renderLogsTable() {
         <td>${l.RemoteAddress}:${l.RemotePort}</td>
         <td><span class="state-badge ${badgeClass}">${l.Action}</span></td>
         <td>
-          <button class="action-btn" title="Quick Whitelist App" onclick="quickWhitelist('${l.Path}')">➕</button>
+          <button class="action-btn" title="Quick Whitelist App" onclick="quickWhitelist('${safePath}')">➕</button>
         </td>
       </tr>
     `;
@@ -436,7 +438,35 @@ function showChartTooltip(clientX, clientY, point) {
   const d = new Date(point.Time);
   const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const dateStr = d.toLocaleDateString();
-  const peakTask = point.PeakTask || 'System Service (Idle)';
+  
+  const detailedChecked = document.getElementById('detailedTooltipCheck')?.checked;
+  const rawTasks = point.PeakTask || 'System Service (Idle)';
+  
+  let taskHtml = '';
+  if (detailedChecked && rawTasks.includes(';')) {
+    const tasks = rawTasks.split(';');
+    taskHtml = tasks.map((t, idx) => {
+      const parts = t.split(' (');
+      const name = parts[0];
+      const speed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 5px; font-size: 11px;">
+          <span style="color: white; font-weight: 500; display: flex; align-items: center; gap: 4px;">
+            <span style="color: var(--accent-color); font-size: 8px;">▶</span> ${idx + 1}. ${name}
+          </span>
+          <span style="color: #ffcc00; font-weight: 600;">${speed}</span>
+        </div>
+      `;
+    }).join('');
+  } else {
+    // Show only the single heaviest peak task
+    const topTask = rawTasks.split(';')[0];
+    taskHtml = `
+      <div style="color: #ffcc00; font-weight: 600; font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+        <span>⚡</span> <span>${topTask}</span>
+      </div>
+    `;
+  }
   
   tooltip.innerHTML = `
     <div style="font-weight: 600; color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">${dateStr} ${timeStr}</div>
@@ -449,10 +479,10 @@ function showChartTooltip(clientX, clientY, point) {
       <span style="font-size: 12px;">Up: <strong style="color: white;">${formatSpeed(point.Tx)}</strong></span>
     </div>
     <div style="margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
-      <div style="color: var(--text-secondary); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Heavy Peak Task</div>
-      <div style="color: #ffcc00; font-weight: 600; font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
-        <span>⚡</span> <span>${peakTask}</span>
+      <div style="color: var(--text-secondary); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+        ${detailedChecked ? 'Parsed Task Breakdown' : 'Heavy Peak Task'}
       </div>
+      ${taskHtml}
     </div>
   `;
   
@@ -715,16 +745,73 @@ function applyCustomAnalyticsRange() {
 }
 
 // Utility Action Helpers
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast(`Copied "${text}" to clipboard!`);
+let currentCopyData = { name: '', path: '' };
+let currentSearchData = { name: '', path: '' };
+
+function openCopyModal(name, path) {
+  currentCopyData = { name, path };
+  document.getElementById('copyModalNamePreview').innerText = name;
+  document.getElementById('copyModalPathPreview').innerText = path || name;
+  document.getElementById('copyModalCombinedPreview').innerText = path ? `${name} - ${path}` : name;
+  document.getElementById('copyOptionsModal').style.display = 'flex';
+}
+
+function confirmCopyToClipboard() {
+  const selectedOption = document.querySelector('input[name="copyField"]:checked').value;
+  let copiedText = '';
+  
+  if (selectedOption === 'name') {
+    copiedText = currentCopyData.name;
+  } else if (selectedOption === 'path') {
+    copiedText = currentCopyData.path;
+  } else {
+    copiedText = currentCopyData.path ? `${currentCopyData.name} - ${currentCopyData.path}` : currentCopyData.name;
+  }
+  
+  navigator.clipboard.writeText(copiedText).then(() => {
+    showToast("Copied selection to clipboard!");
+    closeModal('copyOptionsModal');
   }).catch(() => {
-    alert("Could not copy process name.");
+    alert("Failed to copy data.");
   });
 }
 
-function searchGoogle(query) {
+function openSearchModal(name, path) {
+  currentSearchData = { name, path };
+  const fileName = path ? path.split('\\').pop().split('.').shift() : name;
+  document.getElementById('searchModalNamePreview').innerText = name;
+  document.getElementById('searchModalFilePreview').innerText = fileName;
+  document.getElementById('searchOptionsModal').style.display = 'flex';
+}
+
+function confirmSearchGoogle() {
+  const selectedOption = document.querySelector('input[name="searchField"]:checked').value;
+  let query = '';
+  
+  if (selectedOption === 'name') {
+    query = currentSearchData.name;
+  } else {
+    const path = currentSearchData.path;
+    query = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
+  }
+  
   window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+  closeModal('searchOptionsModal');
+}
+
+function searchVirusTotal(path, fileHash) {
+  if (fileHash && fileHash.length > 0 && fileHash !== "null" && fileHash !== "undefined") {
+    window.open(`https://www.virustotal.com/gui/search/${fileHash}`, '_blank');
+    showToast("Searching VirusTotal with C# Computed SHA1 Hash!");
+  } else {
+    const filename = path ? path.split('\\').pop() : path;
+    window.open(`https://www.virustotal.com/gui/search/${encodeURIComponent(filename)}`, '_blank');
+    showToast("Searching VirusTotal with process filename...");
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
 }
 
 function showToast(msg) {
@@ -769,8 +856,8 @@ function updateBandwidthList() {
           <span class="bandwidth-app" style="display: flex; align-items: center; gap: 8px;">
             ${a.name}
             <span class="task-actions-inline">
-              <span class="inline-action-btn" title="Copy to Clipboard" onclick="copyToClipboard('${a.name}')">📋</span>
-              <span class="inline-action-btn" title="Search Google" onclick="searchGoogle('${a.name}')">🔍</span>
+              <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${a.name}', '${a.name}')">📋</span>
+              <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${a.name}', '${a.name}')">🔍</span>
             </span>
           </span>
           <span style="color: var(--text-secondary);">${a.count} active connections</span>

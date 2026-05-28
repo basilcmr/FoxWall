@@ -28,6 +28,11 @@
   padding: 0;
 }
 
+input, select, button, textarea, label {
+  color: inherit;
+  font-family: inherit;
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
@@ -701,4 +706,111 @@ canvas {
 #appToast.show {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Premium Dialog Modals */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(13, 13, 18, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.modal-card {
+  background: var(--surface-color);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  border-radius: var(--border-radius);
+  width: 90%;
+  max-width: 480px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 14px;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.modal-close {
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.modal-close:hover {
+  color: white;
+}
+
+.modal-option-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(22, 22, 34, 0.4);
+  border: 1px solid var(--border-color);
+  padding: 14px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.modal-option-row:hover {
+  background: rgba(22, 22, 34, 0.8);
+  border-color: rgba(138, 43, 226, 0.4);
+}
+
+.modal-option-row input[type="radio"] {
+  accent-color: var(--accent-color);
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.option-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+
+.option-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

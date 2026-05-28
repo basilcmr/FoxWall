@@ -22,6 +22,7 @@ namespace pylorak.TinyWall
         private readonly TinyWallController Controller;
         private bool PanicActive = false;
         private readonly TrafficHistoryLogger HistoryLogger;
+        private readonly Dictionary<string, string> HashCache = new();
 
         public DashboardServer(TinyWallController ctrl)
         {
@@ -29,6 +30,29 @@ namespace pylorak.TinyWall
             // Web files will be copied to a 'Web' directory alongside the executable
             this.WebRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Web");
             this.HistoryLogger = new TrafficHistoryLogger();
+        }
+
+        private string GetFileHashCached(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return "";
+            lock (HashCache)
+            {
+                if (HashCache.TryGetValue(path, out string? cached)) return cached;
+
+                string hash = "";
+                try
+                {
+                    string resolved = WildcardHelper.ResolveWildcardPath(path);
+                    if (File.Exists(resolved))
+                    {
+                        hash = Hasher.HashFileSha1(resolved) ?? "";
+                    }
+                }
+                catch {}
+
+                HashCache[path] = hash;
+                return hash;
+            }
         }
 
         public void Start()
@@ -349,7 +373,8 @@ namespace pylorak.TinyWall
                         RemoteAddress = row.RemoteEndPoint.Address.ToString(),
                         RemotePort = row.RemoteEndPoint.Port,
                         State = row.State.ToString(),
-                        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        FileHash = GetFileHashCached(path)
                     });
                 }
 
@@ -372,7 +397,8 @@ namespace pylorak.TinyWall
                         RemoteAddress = "*",
                         RemotePort = 0,
                         State = "Listening",
-                        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        FileHash = GetFileHashCached(path)
                     });
                 }
             }
@@ -408,7 +434,8 @@ namespace pylorak.TinyWall
                         LocalPort = entry.LocalPort,
                         RemoteAddress = entry.RemoteIp,
                         RemotePort = entry.RemotePort,
-                        Action = entry.Event.ToString().Contains("BLOCKED") ? "Blocked" : "Allowed"
+                        Action = entry.Event.ToString().Contains("BLOCKED") ? "Blocked" : "Allowed",
+                        FileHash = GetFileHashCached(entry.AppPath)
                     });
                 }
             }

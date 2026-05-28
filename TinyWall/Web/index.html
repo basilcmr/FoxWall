@@ -118,7 +118,13 @@
           
           <div class="panel">
             <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
-              <div class="panel-title">Network Throughput History</div>
+              <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="panel-title">Network Throughput History</div>
+                <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; user-select: none; margin-top: 2px;">
+                  <input type="checkbox" id="detailedTooltipCheck" style="accent-color: var(--accent-color); width: 14px; height: 14px; cursor: pointer;" onchange="drawChart()">
+                  Detailed View
+                </label>
+              </div>
               <div class="controls-box" style="gap: 15px;">
                 <!-- Premium Lookback Control Wrapper -->
                 <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-color); padding: 6px 12px; border-radius: var(--border-radius); border: 1px solid var(--border-color); flex-wrap: wrap;">
@@ -234,6 +240,73 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Premium Interactive Modal: Clipboard Copy Options -->
+  <div id="copyOptionsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Copy to Clipboard Options</h3>
+        <span class="modal-close" onclick="closeModal('copyOptionsModal')">×</span>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px; padding: 20px 0;">
+        <label class="modal-option-row">
+          <input type="radio" name="copyField" value="name" checked>
+          <div class="option-info">
+            <span class="option-title">Process Name</span>
+            <span class="option-desc" id="copyModalNamePreview">chrome.exe</span>
+          </div>
+        </label>
+        <label class="modal-option-row">
+          <input type="radio" name="copyField" value="path">
+          <div class="option-info">
+            <span class="option-title">Executable Full Path</span>
+            <span class="option-desc" id="copyModalPathPreview">C:\Program Files\Google\Chrome\Application\chrome.exe</span>
+          </div>
+        </label>
+        <label class="modal-option-row">
+          <input type="radio" name="copyField" value="combined">
+          <div class="option-info">
+            <span class="option-title">Combined Details</span>
+            <span class="option-desc" id="copyModalCombinedPreview">chrome.exe - C:\Program Files\Google...</span>
+          </div>
+        </label>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="filter-btn" onclick="closeModal('copyOptionsModal')">Cancel</button>
+        <button class="filter-btn" style="background: var(--accent-color); color: white;" onclick="confirmCopyToClipboard()">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Premium Interactive Modal: Google Search Options -->
+  <div id="searchOptionsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🔍 Search Google Options</h3>
+        <span class="modal-close" onclick="closeModal('searchOptionsModal')">×</span>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px; padding: 20px 0;">
+        <label class="modal-option-row">
+          <input type="radio" name="searchField" value="name" checked>
+          <div class="option-info">
+            <span class="option-title">Search Process Name</span>
+            <span class="option-desc" id="searchModalNamePreview">chrome.exe</span>
+          </div>
+        </label>
+        <label class="modal-option-row">
+          <input type="radio" name="searchField" value="path">
+          <div class="option-info">
+            <span class="option-title">Search File Name</span>
+            <span class="option-desc" id="searchModalFilePreview">chrome</span>
+          </div>
+        </label>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="filter-btn" onclick="closeModal('searchOptionsModal')">Cancel</button>
+        <button class="filter-btn" style="background: var(--accent-color); color: white;" onclick="confirmSearchGoogle()">Search Google</button>
+      </div>
     </div>
   </div>
 

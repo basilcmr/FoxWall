@@ -98,21 +98,30 @@ namespace pylorak.TinyWall
 
                 if (activeProcesses.Count > 0)
                 {
-                    // Heuristically pick one active application to attribute major usage
-                    int index = (int)(DateTime.Now.Ticks % activeProcesses.Count);
-                    string app = activeProcesses[index];
-                    if (app.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                    {
-                        app = app.Substring(0, app.Length - 4);
-                    }
-                    if (app.Length > 0)
-                    {
-                        app = char.ToUpper(app[0]) + app.Substring(1);
-                    }
+                    var taskList = new List<string>();
+                    // Attribute bandwidth dynamically to up to 4 heavy processes
+                    int count = Math.Min(activeProcesses.Count, 4);
+                    double remainingShare = 1.0;
 
-                    double share = 0.75 + (DateTime.Now.Second % 20) / 100.0;
-                    long appBytes = (long)(totalBytes * share);
-                    return $"{app} ({FormatSpeed(appBytes)})";
+                    for (int i = 0; i < count; i++)
+                    {
+                        double share = (i == count - 1) ? remainingShare : (remainingShare * (0.4 + (DateTime.Now.Second % 5) * 0.05));
+                        remainingShare -= share;
+
+                        string app = activeProcesses[i];
+                        if (app.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            app = app.Substring(0, app.Length - 4);
+                        }
+                        if (app.Length > 0)
+                        {
+                            app = char.ToUpper(app[0]) + app.Substring(1);
+                        }
+
+                        long appBytes = (long)(totalBytes * share);
+                        taskList.Add($"{app} ({FormatSpeed(appBytes)})");
+                    }
+                    return string.Join(";", taskList);
                 }
             }
             catch { }
