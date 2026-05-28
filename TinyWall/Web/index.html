@@ -120,10 +120,15 @@
             <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
               <div style="display: flex; align-items: center; gap: 15px;">
                 <div class="panel-title">Network Throughput History</div>
-                <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; user-select: none; margin-top: 2px;">
-                  <input type="checkbox" id="detailedTooltipCheck" style="accent-color: var(--accent-color); width: 14px; height: 14px; cursor: pointer;" onchange="drawChart()">
-                  Detailed View
-                </label>
+                
+                <!-- Premium Styled Toggle Switch -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label class="switch-container">
+                    <input type="checkbox" id="detailedTooltipCheck" onchange="drawChart()">
+                    <span class="switch-slider"></span>
+                  </label>
+                  <span style="font-size: 12px; color: var(--text-secondary); user-select: none; font-weight: 500;">Detailed View</span>
+                </div>
               </div>
               <div class="controls-box" style="gap: 15px;">
                 <!-- Premium Lookback Control Wrapper -->
@@ -240,6 +245,53 @@
         </div>
       </div>
 
+      <!-- TAB 4: Process Analytics Details -->
+      <div id="tab-process-analytics" class="tab-content">
+        <div class="grid-2col">
+          
+          <!-- Process Info Details Card -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Select Target Process</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Choose Application:</span>
+                <select class="search-input" id="processHistorySelect" style="padding: 10px 14px; cursor: pointer; width: 100%;" onchange="changeProcessHistoryTarget(this.value)">
+                  <!-- Unique processes populated dynamically -->
+                </select>
+              </div>
+              
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); padding: 18px; border-radius: var(--border-radius); display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: var(--text-secondary); font-size: 13px;">Active Connections:</span>
+                  <span id="procDetailActiveConns" style="font-weight: 600; color: white; font-size: 14px;">0 conns</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: var(--text-secondary); font-size: 13px;">Peak Hist. Bandwidth:</span>
+                  <span id="procDetailPeakSpeed" style="font-weight: 600; color: #ffcc00; font-size: 14px;">0.0 KiB/s</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: var(--text-secondary); font-size: 13px;">Total Events Logged:</span>
+                  <span id="procDetailAlerts" style="font-weight: 600; color: var(--danger-color); font-size: 14px;">0 occurrences</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Process History Timeline Line Chart -->
+          <div class="panel" style="grid-column: span 1;">
+            <div class="panel-header">
+              <div class="panel-title" id="processChartTitle">Process Throughput Timeline</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="processBandwidthChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -289,23 +341,78 @@
       </div>
       <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px; padding: 20px 0;">
         <label class="modal-option-row">
-          <input type="radio" name="searchField" value="name" checked>
+          <input type="radio" name="searchField" value="name" checked onchange="toggleSearchOptionSelection('name')">
           <div class="option-info">
             <span class="option-title">Search Process Name</span>
             <span class="option-desc" id="searchModalNamePreview">chrome.exe</span>
           </div>
         </label>
         <label class="modal-option-row">
-          <input type="radio" name="searchField" value="path">
+          <input type="radio" name="searchField" value="path" onchange="toggleSearchOptionSelection('path')">
           <div class="option-info">
             <span class="option-title">Search File Name</span>
             <span class="option-desc" id="searchModalFilePreview">chrome</span>
           </div>
         </label>
+        
+        <!-- Editable Search Query Prompt Box (On by default) -->
+        <div id="searchPromptContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; font-weight: 600; color: white;">Search Query:</span>
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer; user-select: none;">
+              <input type="checkbox" id="searchPromptCheck" style="accent-color: var(--accent-color); cursor: pointer;" checked onchange="toggleSearchPromptEdit()">
+              Prompt Checkbox (Edit query)
+            </label>
+          </div>
+          <input type="text" class="search-input" id="searchPromptQueryInput" style="padding: 10px 14px; font-size: 13px; color: white;">
+        </div>
       </div>
       <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="filter-btn" onclick="closeModal('searchOptionsModal')">Cancel</button>
         <button class="filter-btn" style="background: var(--accent-color); color: white;" onclick="confirmSearchGoogle()">Search Google</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Premium Click Detail Breakdown Modal -->
+  <div id="chartClickDetailModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 550px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">📊 Historical Throughput Breakdown</h3>
+          <span id="clickModalTimestamp" style="font-size: 11px; color: var(--text-secondary);">2026-05-28 21:40:00</span>
+        </div>
+        <span class="modal-close" onclick="closeModal('chartClickDetailModal')">×</span>
+      </div>
+      <div class="modal-body" style="padding: 20px 0; display: flex; flex-direction: column; gap: 15px;">
+        <div style="display: flex; gap: 15px;">
+          <div style="flex: 1; background: rgba(0,255,204,0.04); border: 1px solid rgba(0,255,204,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+            <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Total Download</span>
+            <div id="clickModalRx" style="font-size: 20px; font-weight: 700; color: var(--success-color); margin-top: 4px;">0.0 KiB/s</div>
+          </div>
+          <div style="flex: 1; background: rgba(138,43,226,0.04); border: 1px solid rgba(138,43,226,0.15); padding: 12px; border-radius: 8px; text-align: center;">
+            <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Total Upload</span>
+            <div id="clickModalTx" style="font-size: 20px; font-weight: 700; color: var(--accent-color); margin-top: 4px;">0.0 KiB/s</div>
+          </div>
+        </div>
+        
+        <div class="table-wrapper">
+          <table style="width: 100%;">
+            <thead>
+              <tr>
+                <th style="padding: 12px 16px; font-size: 12px;">Active Task</th>
+                <th style="padding: 12px 16px; font-size: 12px; text-align: right;">Simulated Share</th>
+                <th style="padding: 12px 16px; font-size: 12px; text-align: center; width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clickModalTableBody">
+              <!-- Dynamically populated tasks rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+        <button class="filter-btn" style="background: var(--accent-color); color: white; padding: 10px 24px;" onclick="closeModal('chartClickDetailModal')">Done</button>
       </div>
     </div>
   </div>

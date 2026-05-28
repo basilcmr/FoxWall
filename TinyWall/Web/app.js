@@ -397,6 +397,7 @@ function initChart() {
   
   chartCanvas.addEventListener('mousemove', handleChartHover);
   chartCanvas.addEventListener('mouseleave', handleChartLeave);
+  chartCanvas.addEventListener('click', handleChartClick);
   
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
@@ -415,6 +416,61 @@ function handleChartHover(e) {
     showChartTooltip(e.clientX, e.clientY, point);
     drawChart();
   }
+}
+
+function handleChartClick(e) {
+  if (!analyticsPoints || analyticsPoints.length === 0) return;
+  const rect = chartCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  
+  const w = chartCanvas.width;
+  const index = Math.round((mouseX / w) * (analyticsPoints.length - 1));
+  if (index >= 0 && index < analyticsPoints.length) {
+    const point = analyticsPoints[index];
+    openClickDetailModal(point);
+  }
+}
+
+function openClickDetailModal(point) {
+  const d = new Date(point.Time);
+  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = d.toLocaleDateString();
+  
+  document.getElementById('clickModalTimestamp').innerText = `${dateStr} ${timeStr}`;
+  document.getElementById('clickModalRx').innerText = formatSpeed(point.Rx);
+  document.getElementById('clickModalTx').innerText = formatSpeed(point.Tx);
+  
+  const tbody = document.getElementById('clickModalTableBody');
+  const rawTasks = point.PeakTask || 'System Service (Idle)';
+  
+  if (rawTasks === 'Idle') {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 20px;">System was idle at this point.</td></tr>`;
+  } else {
+    const tasks = rawTasks.split(';');
+    tbody.innerHTML = tasks.map((t, idx) => {
+      const parts = t.split(' (');
+      const name = parts[0];
+      const speed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+      
+      // Heuristically construct standard path mock for click modal lookup integrity
+      const mockPath = `C:\\Windows\\System32\\${name}.exe`;
+      const safePath = mockPath.replace(/\\/g, '\\\\');
+      
+      return `
+        <tr>
+          <td style="padding: 10px 16px; font-weight: 600; color: white;">${idx + 1}. ${name}</td>
+          <td style="padding: 10px 16px; text-align: right; color: #ffcc00; font-weight: 600;">${speed}</td>
+          <td style="padding: 10px 16px; text-align: center;">
+            <span class="inline-action-btn" title="Copy to Clipboard" onclick="openCopyModal('${name}', '${safePath}')" style="font-size: 13px; margin: 0 4px; display: inline-block;">📋</span>
+            <span class="inline-action-btn" title="Search Google" onclick="openSearchModal('${name}', '${safePath}')" style="font-size: 13px; margin: 0 4px; display: inline-block;">🔍</span>
+            <span class="inline-action-btn" title="Search on VirusTotal" onclick="searchVirusTotal('${safePath}', '')" style="font-size: 13px; margin: 0 4px; display: inline-block;">🛡️</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+  
+  document.getElementById('chartClickDetailModal').style.display = 'flex';
 }
 
 function handleChartLeave() {
@@ -781,21 +837,59 @@ function openSearchModal(name, path) {
   const fileName = path ? path.split('\\').pop().split('.').shift() : name;
   document.getElementById('searchModalNamePreview').innerText = name;
   document.getElementById('searchModalFilePreview').innerText = fileName;
+  
+  // Set prompt query checkbox to checked by default
+  const promptCheck = document.getElementById('searchPromptCheck');
+  if (promptCheck) promptCheck.checked = true;
+  
+  // Populate the editable input with process name by default
+  toggleSearchOptionSelection('name');
+  
   document.getElementById('searchOptionsModal').style.display = 'flex';
 }
 
-function confirmSearchGoogle() {
-  const selectedOption = document.querySelector('input[name="searchField"]:checked').value;
-  let query = '';
-  
-  if (selectedOption === 'name') {
-    query = currentSearchData.name;
+function toggleSearchOptionSelection(field) {
+  let defaultQuery = '';
+  if (field === 'name') {
+    defaultQuery = currentSearchData.name;
   } else {
     const path = currentSearchData.path;
-    query = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
+    defaultQuery = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
   }
   
-  window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+  const queryInput = document.getElementById('searchPromptQueryInput');
+  if (queryInput) {
+    queryInput.value = defaultQuery;
+  }
+}
+
+function toggleSearchPromptEdit() {
+  const promptCheck = document.getElementById('searchPromptCheck');
+  const queryInput = document.getElementById('searchPromptQueryInput');
+  if (promptCheck && queryInput) {
+    queryInput.disabled = !promptCheck.checked;
+    queryInput.style.opacity = promptCheck.checked ? '1' : '0.5';
+  }
+}
+
+function confirmSearchGoogle() {
+  const promptCheck = document.getElementById('searchPromptCheck');
+  const queryInput = document.getElementById('searchPromptQueryInput');
+  
+  let finalQuery = '';
+  if (promptCheck && promptCheck.checked && queryInput && queryInput.value.trim().length > 0) {
+    finalQuery = queryInput.value;
+  } else {
+    const selectedOption = document.querySelector('input[name="searchField"]:checked').value;
+    if (selectedOption === 'name') {
+      finalQuery = currentSearchData.name;
+    } else {
+      const path = currentSearchData.path;
+      finalQuery = path ? path.split('\\').pop().split('.').shift() : currentSearchData.name;
+    }
+  }
+  
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(finalQuery)}`, '_blank');
   closeModal('searchOptionsModal');
 }
 
