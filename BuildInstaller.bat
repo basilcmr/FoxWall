@@ -106,10 +106,11 @@ if %errorLevel% neq 0 (
 
 :: 5. Copy output executable to workspace root
 echo [5/5] Deploying final installer to root...
-copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "%WORKSPACE_DIR%\FoxWallJellyModeInstaller.exe"
-copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "FoxWallJellyModeInstaller.exe"
-copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "%WORKSPACE_DIR%\FoxWallJellyModeInstaller %VERSION%.exe"
 copy /Y "TinyWallJellyModeInstaller\bin\Release\net48\FoxWallJellyModeInstaller.exe" "FoxWallJellyModeInstaller %VERSION%.exe"
+
+:: Clean up old unversioned installers in the project folder to keep it clean
+del /F /Q "FoxWallJellyModeInstaller.exe" >nul 2>&1
+del /F /Q "TinyWallJellyModeInstaller.exe" >nul 2>&1
 
 :: Clean up temporary ZIP
 del /F /Q "TinyWallFiles.zip" >nul 2>&1
