@@ -199,8 +199,8 @@ namespace pylorak.TinyWall
                     {
                         mode = "Normal", // Default placeholder
                         locked = GlobalInstances.Controller.IsServerLocked,
-                        rxSpeed = 10480, // Simulated rates in bytes
-                        txSpeed = 2340,
+                        rxSpeed = HistoryLogger.CurrentRx,
+                        txSpeed = HistoryLogger.CurrentTx,
                         panicActive = PanicActive
                     };
                     break;
@@ -219,22 +219,28 @@ namespace pylorak.TinyWall
                         DateTime start = end.AddMinutes(-5);
 
                         string range = request.QueryString["range"] ?? "5m";
-                        switch (range)
+                        if (range == "custom")
                         {
-                            case "1m": start = end.AddMinutes(-1); break;
-                            case "5m": start = end.AddMinutes(-5); break;
-                            case "1h": start = end.AddHours(-1); break;
-                            case "5h": start = end.AddHours(-5); break;
-                            case "1d": start = end.AddDays(-1); break;
-                            case "2d": start = end.AddDays(-2); break;
-                            case "5d": start = end.AddDays(-5); break;
-                            case "1w": start = end.AddDays(-7); break;
-                            case "custom":
-                                if (DateTime.TryParse(request.QueryString["start"], out DateTime parsedStart))
-                                    start = parsedStart;
-                                if (DateTime.TryParse(request.QueryString["end"], out DateTime parsedEnd))
-                                    end = parsedEnd;
-                                break;
+                            if (DateTime.TryParse(request.QueryString["start"], out DateTime parsedStart))
+                                start = parsedStart;
+                            if (DateTime.TryParse(request.QueryString["end"], out DateTime parsedEnd))
+                                end = parsedEnd;
+                        }
+                        else
+                        {
+                            // Support fully dynamic duration like '12h', '10m', '3d', '1w'
+                            if (range.Length > 1 && char.IsLetter(range[range.Length - 1]))
+                            {
+                                char unit = range[range.Length - 1];
+                                string numStr = range.Substring(0, range.Length - 1);
+                                if (int.TryParse(numStr, out int val) && val > 0)
+                                {
+                                    if (unit == 'm') start = end.AddMinutes(-val);
+                                    else if (unit == 'h') start = end.AddHours(-val);
+                                    else if (unit == 'd') start = end.AddDays(-val);
+                                    else if (unit == 'w') start = end.AddDays(-val * 7);
+                                }
+                            }
                         }
                         responseData = HistoryLogger.GetHistory(start, end);
                         break;

@@ -21,17 +21,25 @@ let logSortAsc = false;
 window.onload = () => {
   initChart();
   
-  // Set default dates for mini-calendar (custom range pickers)
+  // Set default dates and times for mini-calendars (separated date/time pickers)
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
-  const toLocalIso = (date) => {
+  const toLocalDate = (date) => {
     const tzOffset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
+  };
+
+  const toLocalTime = (date) => {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
   
-  document.getElementById('customRangeStart').value = toLocalIso(oneHourAgo);
-  document.getElementById('customRangeEnd').value = toLocalIso(now);
+  document.getElementById('customDateStart').value = toLocalDate(oneHourAgo);
+  document.getElementById('customDateEnd').value = toLocalDate(now);
+  document.getElementById('customTimeStart').value = toLocalTime(oneHourAgo);
+  document.getElementById('customTimeEnd').value = toLocalTime(now);
   
   pollData();
   setInterval(pollData, 1500);
@@ -100,6 +108,16 @@ function updateUI() {
   
   const blockedCount = logData.filter(e => e.Action === 'Blocked' || e.State === 'Blocked').length;
   document.getElementById('statBlockedCount').innerText = blockedCount;
+
+  // Dynamic blocked card duration text
+  let durationText = 'Last 5m';
+  if (analyticsRange === 'custom') {
+    durationText = 'Custom Range';
+  } else {
+    const unitLabel = lookbackUnit === 'm' ? 'Min' : (lookbackUnit === 'h' ? 'Hours' : 'Days');
+    durationText = `Last ${lookbackNum} ${unitLabel}`;
+  }
+  document.getElementById('statBlockedTitle').innerText = `Blocked (${durationText})`;
 
   // Format speed rates
   const rxStr = formatSpeed(statusData.rxSpeed);
@@ -193,7 +211,14 @@ function renderSocketsTable() {
           <div class="process-cell">
             <span style="font-size: 18px;">📄</span>
             <div class="process-info">
-              <span class="process-name">${s.ProcessName}</span>
+              <span class="process-name">
+                ${s.ProcessName}
+                <span class="task-actions-inline">
+                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="copyToClipboard('${s.ProcessName}')">📋</span>
+                  <span class="inline-action-btn" title="Search Google" onclick="searchGoogle('${s.ProcessName}')">🔍</span>
+                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="virusTotalLookup('${s.Path}')">🛡️</span>
+                </span>
+              </span>
               <span class="process-pid">PID: ${s.Pid}</span>
             </div>
           </div>
@@ -252,7 +277,14 @@ function renderLogsTable() {
           <div class="process-cell">
             <span style="font-size: 18px;">🛡️</span>
             <div class="process-info">
-              <span class="process-name">${l.ProcessName}</span>
+              <span class="process-name">
+                ${l.ProcessName}
+                <span class="task-actions-inline">
+                  <span class="inline-action-btn" title="Copy to Clipboard" onclick="copyToClipboard('${l.ProcessName}')">📋</span>
+                  <span class="inline-action-btn" title="Search Google" onclick="searchGoogle('${l.ProcessName}')">🔍</span>
+                  <span class="inline-action-btn" title="Search on VirusTotal" onclick="virusTotalLookup('${l.Path}')">🛡️</span>
+                </span>
+              </span>
               <span class="process-pid">PID: ${l.Pid}</span>
             </div>
           </div>
@@ -355,12 +387,78 @@ function sortLogs(col) {
 
 /* Real-Time HTML5 Canvas Chart Rendering */
 let chartCanvas, ctx;
+let activeHoverIndex = -1;
 
 function initChart() {
   chartCanvas = document.getElementById('bandwidthChart');
   ctx = chartCanvas.getContext('2d');
+  
+  chartCanvas.addEventListener('mousemove', handleChartHover);
+  chartCanvas.addEventListener('mouseleave', handleChartLeave);
+  
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
+}
+
+function handleChartHover(e) {
+  if (!analyticsPoints || analyticsPoints.length === 0) return;
+  const rect = chartCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  
+  const w = chartCanvas.width;
+  const index = Math.round((mouseX / w) * (analyticsPoints.length - 1));
+  if (index >= 0 && index < analyticsPoints.length) {
+    activeHoverIndex = index;
+    const point = analyticsPoints[index];
+    showChartTooltip(e.clientX, e.clientY, point);
+    drawChart();
+  }
+}
+
+function handleChartLeave() {
+  activeHoverIndex = -1;
+  const tooltip = document.getElementById('chartTooltip');
+  if (tooltip) {
+    tooltip.style.opacity = '0';
+  }
+  drawChart();
+}
+
+function showChartTooltip(clientX, clientY, point) {
+  let tooltip = document.getElementById('chartTooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'chartTooltip';
+    document.body.appendChild(tooltip);
+  }
+  
+  // Format Date and Time
+  const d = new Date(point.Time);
+  const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = d.toLocaleDateString();
+  const peakTask = point.PeakTask || 'System Service (Idle)';
+  
+  tooltip.innerHTML = `
+    <div style="font-weight: 600; color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">${dateStr} ${timeStr}</div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+      <span style="color: var(--success-color); font-size: 10px;">●</span>
+      <span style="font-size: 12px;">Down: <strong style="color: white;">${formatSpeed(point.Rx)}</strong></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <span style="color: var(--accent-color); font-size: 10px;">●</span>
+      <span style="font-size: 12px;">Up: <strong style="color: white;">${formatSpeed(point.Tx)}</strong></span>
+    </div>
+    <div style="margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
+      <div style="color: var(--text-secondary); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Heavy Peak Task</div>
+      <div style="color: #ffcc00; font-weight: 600; font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+        <span>⚡</span> <span>${peakTask}</span>
+      </div>
+    </div>
+  `;
+  
+  tooltip.style.left = `${clientX + window.scrollX}px`;
+  tooltip.style.top = `${clientY + window.scrollY}px`;
+  tooltip.style.opacity = '1';
 }
 
 function resizeCanvas() {
@@ -405,6 +503,7 @@ function drawChart() {
 
   // Helper to get coordinates
   function getX(index) {
+    if (points.length <= 1) return w / 2;
     return (w / (points.length - 1)) * index;
   }
 
@@ -419,6 +518,7 @@ function drawChart() {
   drawPath(txValues, 'rgba(138, 43, 226, 0.15)', 'rgba(138, 43, 226, 1)', 2);
 
   function drawPath(history, fillGradient, strokeColor, lineWidth) {
+    if (points.length === 0) return;
     ctx.beginPath();
     ctx.moveTo(getX(0), getY(history[0]));
 
@@ -442,6 +542,46 @@ function drawChart() {
     ctx.fill();
   }
 
+  // Draw Vertical Highlight Line and Dot if Hovered
+  if (activeHoverIndex >= 0 && activeHoverIndex < points.length) {
+    const hx = getX(activeHoverIndex);
+    
+    // Draw vertical dashed line
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.moveTo(hx, 0);
+    ctx.lineTo(hx, h);
+    ctx.stroke();
+    ctx.setLineDash([]); // Reset line dash
+    
+    // Draw active dots for both lines
+    const activeRxY = getY(rxValues[activeHoverIndex]);
+    const activeTxY = getY(txValues[activeHoverIndex]);
+    
+    // Rx glowing dot
+    ctx.beginPath();
+    ctx.arc(hx, activeRxY, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#00ffcc';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00ffcc';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+    
+    // Tx glowing dot
+    ctx.beginPath();
+    ctx.arc(hx, activeTxY, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#8a2be2';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#8a2be2';
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.shadowBlur = 0; // Reset glow
+  }
+
   // Draw legend labels on chart
   ctx.font = '12px Outfit';
   ctx.textAlign = 'left';
@@ -449,6 +589,34 @@ function drawChart() {
   ctx.fillText(`Down: ${formatSpeed(statusData.rxSpeed)}`, 20, 30);
   ctx.fillStyle = '#8a2be2';
   ctx.fillText(`Up: ${formatSpeed(statusData.txSpeed)}`, 20, 50);
+
+  // Draw Dynamic Timeline X-Axis Labels at Bottom (Start, Mid, End)
+  if (points.length >= 2) {
+    ctx.font = '10px Outfit';
+    ctx.fillStyle = 'var(--text-secondary)';
+    
+    function formatTimelineLabel(timeStr) {
+      const d = new Date(timeStr);
+      const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const datePart = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return `${datePart} ${timePart}`;
+    }
+
+    // Start label
+    ctx.textAlign = 'left';
+    ctx.fillText(formatTimelineLabel(points[0].Time), 20, h - 10);
+
+    // End label
+    ctx.textAlign = 'right';
+    ctx.fillText(formatTimelineLabel(points[points.length - 1].Time), w - 20, h - 10);
+
+    // Middle label
+    if (points.length >= 3) {
+      ctx.textAlign = 'center';
+      const midIdx = Math.floor(points.length / 2);
+      ctx.fillText(formatTimelineLabel(points[midIdx].Time), w / 2, h - 10);
+    }
+  }
 }
 
 // Fetch historical analytics data
@@ -456,8 +624,14 @@ async function fetchAnalyticsHistory() {
   try {
     let url = `/api/analytics/history?range=${analyticsRange}`;
     if (analyticsRange === 'custom') {
-      const start = document.getElementById('customRangeStart').value;
-      const end = document.getElementById('customRangeEnd').value;
+      const dateStart = document.getElementById('customDateStart').value;
+      const dateEnd = document.getElementById('customDateEnd').value;
+      const timeStart = document.getElementById('customTimeStart').value;
+      const timeEnd = document.getElementById('customTimeEnd').value;
+      
+      const start = `${dateStart}T${timeStart}:00`;
+      const end = `${dateEnd}T${timeEnd}:59`;
+      
       url += `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
     }
 
@@ -469,21 +643,100 @@ async function fetchAnalyticsHistory() {
   }
 }
 
-// Handler for standard timeline range changes
-function changeAnalyticsRange(val) {
-  analyticsRange = val;
+// Dynamic Lookback Selections
+let lookbackNum = 5;
+let lookbackUnit = 'm';
+
+function selectLookbackNum(num, btn) {
+  lookbackNum = parseInt(num);
+  document.getElementById('customLookbackNum').value = num;
+  
+  // Toggle active button class
+  document.querySelectorAll('#quickNumGroup .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  
+  triggerLookbackFetch();
+}
+
+function onCustomLookbackNumChange() {
+  const inputVal = parseInt(document.getElementById('customLookbackNum').value);
+  if (isNaN(inputVal) || inputVal <= 0) return;
+  lookbackNum = inputVal;
+  
+  // Highlight lookback button matching custom number if exists, otherwise remove active highlights
+  document.querySelectorAll('#quickNumGroup .filter-btn').forEach(btn => {
+    if (parseInt(btn.innerText) === inputVal) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+  
+  triggerLookbackFetch();
+}
+
+function selectLookbackUnit(unit, btn) {
+  lookbackUnit = unit;
+  
+  // Toggle active button class
+  document.querySelectorAll('#quickUnitGroup .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  
+  triggerLookbackFetch();
+}
+
+function triggerLookbackFetch() {
+  analyticsRange = `${lookbackNum}${lookbackUnit}`;
+  
+  // Hide custom range picker when toggling standard lookback durations
+  document.getElementById('customRangePicker').style.display = 'none';
+  document.getElementById('customRangeToggleBtn').classList.remove('active');
+  
+  fetchAnalyticsHistory();
+}
+
+function toggleCustomRangePicker() {
   const picker = document.getElementById('customRangePicker');
-  if (val === 'custom') {
+  const toggleBtn = document.getElementById('customRangeToggleBtn');
+  
+  if (picker.style.display === 'none' || picker.style.display === '') {
     picker.style.display = 'flex';
+    toggleBtn.classList.add('active');
+    analyticsRange = 'custom';
   } else {
     picker.style.display = 'none';
-    fetchAnalyticsHistory();
+    toggleBtn.classList.remove('active');
+    // Revert back to lookback window
+    triggerLookbackFetch();
   }
 }
 
-// Handler for calendar picker selection
+// Handler for custom date range range picker
 function applyCustomAnalyticsRange() {
+  analyticsRange = 'custom';
   fetchAnalyticsHistory();
+}
+
+// Utility Action Helpers
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`Copied "${text}" to clipboard!`);
+  }).catch(() => {
+    alert("Could not copy process name.");
+  });
+}
+
+function searchGoogle(query) {
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+}
+
+function showToast(msg) {
+  let toast = document.getElementById('appToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'appToast';
+    document.body.appendChild(toast);
+  }
+  toast.innerText = msg;
+  toast.className = 'show';
+  setTimeout(() => { toast.className = ''; }, 2500);
 }
 
 // Generate Bandwidth by Process indicators
@@ -512,8 +765,14 @@ function updateBandwidthList() {
     const widthPercentage = (a.count / maxCount) * 100;
     return `
       <div class="bandwidth-item">
-        <div class="bandwidth-header">
-          <span class="bandwidth-app">${a.name}</span>
+        <div class="bandwidth-header" style="align-items: center;">
+          <span class="bandwidth-app" style="display: flex; align-items: center; gap: 8px;">
+            ${a.name}
+            <span class="task-actions-inline">
+              <span class="inline-action-btn" title="Copy to Clipboard" onclick="copyToClipboard('${a.name}')">📋</span>
+              <span class="inline-action-btn" title="Search Google" onclick="searchGoogle('${a.name}')">🔍</span>
+            </span>
+          </span>
           <span style="color: var(--text-secondary);">${a.count} active connections</span>
         </div>
         <div class="bandwidth-track">

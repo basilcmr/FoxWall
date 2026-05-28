@@ -58,7 +58,7 @@
           <div class="stat-rate in" id="statTrafficRx">0.0 KiB/s Down</div>
         </div>
         <div class="stat-card">
-          <div class="stat-title">Blocked (Last 5m)</div>
+          <div class="stat-title" id="statBlockedTitle">Blocked (Last 5m)</div>
           <div class="stat-value" id="statBlockedCount" style="color: var(--danger-color);">0</div>
           <div class="stat-rate out" id="statTrafficTx">0.0 KiB/s Up</div>
         </div>
@@ -119,26 +119,50 @@
           <div class="panel">
             <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
               <div class="panel-title">Network Throughput History</div>
-              <div class="controls-box">
-                <select class="search-input" id="analyticsRange" style="padding: 8px 12px; width: 150px; min-width: 150px; cursor: pointer;" onchange="changeAnalyticsRange(this.value)">
-                  <option value="1m">Last Minute</option>
-                  <option value="5m" selected>Last 5 Min</option>
-                  <option value="1h">Last 1 Hour</option>
-                  <option value="5h">Last 5 Hours</option>
-                  <option value="1d">Last 1 Day</option>
-                  <option value="2d">Last 2 Days</option>
-                  <option value="5d">Last 5 Days</option>
-                  <option value="1w">Last 1 Week</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-                
-                <div id="customRangePicker" style="display: none; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <input type="datetime-local" class="search-input" id="customRangeStart" style="padding: 8px; font-size: 12px; width: 180px; min-width: 180px;">
-                  <span style="color: var(--text-secondary);">to</span>
-                  <input type="datetime-local" class="search-input" id="customRangeEnd" style="padding: 8px; font-size: 12px; width: 180px; min-width: 180px;">
-                  <button class="filter-btn" style="padding: 8px 15px;" onclick="applyCustomAnalyticsRange()">Apply</button>
+              <div class="controls-box" style="gap: 15px;">
+                <!-- Premium Lookback Control Wrapper -->
+                <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-color); padding: 6px 12px; border-radius: var(--border-radius); border: 1px solid var(--border-color); flex-wrap: wrap;">
+                  <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Recent Activity:</span>
+                  
+                  <!-- Value Selector Quick Buttons -->
+                  <div class="filter-btn-group" id="quickNumGroup" style="border: none; padding: 0; background: transparent; gap: 4px;">
+                    <button class="filter-btn" style="padding: 6px 12px;" onclick="selectLookbackNum(1, this)">1</button>
+                    <button class="filter-btn active" style="padding: 6px 12px;" onclick="selectLookbackNum(5, this)">5</button>
+                    <button class="filter-btn" style="padding: 6px 12px;" onclick="selectLookbackNum(10, this)">10</button>
+                    <button class="filter-btn" style="padding: 6px 12px;" onclick="selectLookbackNum(30, this)">30</button>
+                  </div>
+
+                  <!-- Custom Dynamic Value Input -->
+                  <input type="number" class="search-input" id="customLookbackNum" min="1" value="5" style="width: 70px; min-width: 70px; padding: 6px 10px; text-align: center;" oninput="onCustomLookbackNumChange()">
+
+                  <!-- Lookback Duration Unit Buttons -->
+                  <div class="filter-btn-group" id="quickUnitGroup" style="border: none; padding: 0; background: transparent; gap: 4px;">
+                    <button class="filter-btn active" style="padding: 6px 12px;" onclick="selectLookbackUnit('m', this)">Min</button>
+                    <button class="filter-btn" style="padding: 6px 12px;" onclick="selectLookbackUnit('h', this)">Hour</button>
+                    <button class="filter-btn" style="padding: 6px 12px;" onclick="selectLookbackUnit('d', this)">Days</button>
+                  </div>
                 </div>
+
+                <!-- Custom Range Toggle -->
+                <button class="filter-btn" id="customRangeToggleBtn" style="padding: 10px 18px; border: 1px solid var(--border-color);" onclick="toggleCustomRangePicker()">📅 Custom Range</button>
               </div>
+            </div>
+
+            <!-- Separated Calendar Date Range & Time Duration pickers -->
+            <div id="customRangePicker" style="display: none; align-items: center; gap: 15px; background: rgba(22, 22, 34, 0.6); padding: 12px 20px; border-radius: var(--border-radius); border: 1px solid var(--border-color); flex-wrap: wrap; margin-top: -10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Dates:</span>
+                <input type="date" class="search-input" id="customDateStart" style="padding: 6px 10px; font-size: 13px; width: 140px; min-width: 140px; text-align: center;">
+                <span style="color: var(--text-secondary);">to</span>
+                <input type="date" class="search-input" id="customDateEnd" style="padding: 6px 10px; font-size: 13px; width: 140px; min-width: 140px; text-align: center;">
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Times:</span>
+                <input type="time" class="search-input" id="customTimeStart" value="00:00" style="padding: 6px 10px; font-size: 13px; width: 110px; min-width: 110px; text-align: center;">
+                <span style="color: var(--text-secondary);">to</span>
+                <input type="time" class="search-input" id="customTimeEnd" value="23:59" style="padding: 6px 10px; font-size: 13px; width: 110px; min-width: 110px; text-align: center;">
+              </div>
+              <button class="filter-btn" style="padding: 8px 20px; background: var(--accent-color); color: white; border-radius: 8px;" onclick="applyCustomAnalyticsRange()">Apply Range</button>
             </div>
             <div class="chart-container">
               <canvas id="bandwidthChart"></canvas>
