@@ -291,6 +291,12 @@ namespace pylorak.TinyWall
                     }
                 }
                 catch { }
+
+                if (listView.Tag is not ListViewHeaderBrush)
+                {
+                    var brush = new ListViewHeaderBrush(listView);
+                    listView.Tag = brush;
+                }
             }
             else if (ctrl is CheckedListBox checkedListBox)
             {
@@ -547,6 +553,94 @@ namespace pylorak.TinyWall
                 }
 
                 TextRenderer.DrawText(e.Graphics, button.Text, button.Font, textRect, disabledTextColor, flags);
+            }
+        }
+
+        private class ListViewHeaderBrush : NativeWindow
+        {
+            private readonly ListView _listView;
+
+            public ListViewHeaderBrush(ListView listView)
+            {
+                _listView = listView;
+                _listView.HandleCreated += (s, e) => {
+                    AttachHeader();
+                };
+                _listView.HandleDestroyed += (s, e) => {
+                    ReleaseHandle();
+                };
+                if (_listView.IsHandleCreated)
+                {
+                    AttachHeader();
+                }
+            }
+
+            private void AttachHeader()
+            {
+                IntPtr hHeader = SendMessage(_listView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
+                if (hHeader != IntPtr.Zero)
+                {
+                    AssignHandle(hHeader);
+                }
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                base.WndProc(ref m);
+
+                // WM_PAINT = 0x000F
+                if (m.Msg == 0x000F && _listView.Columns.Count > 0)
+                {
+                    try
+                    {
+                        int lastColumnRight = 0;
+                        foreach (ColumnHeader col in _listView.Columns)
+                        {
+                            lastColumnRight += col.Width;
+                        }
+
+                        IntPtr hHeader = SendMessage(_listView.Handle, LVM_GETHEADER, IntPtr.Zero, IntPtr.Zero);
+                        if (hHeader != IntPtr.Zero)
+                        {
+                            RECT headerRect;
+                            if (GetClientRect(hHeader, out headerRect))
+                            {
+                                int headerWidth = headerRect.Right - headerRect.Left;
+                                int emptyWidth = headerWidth - lastColumnRight;
+                                if (emptyWidth > 0)
+                                {
+                                    using (var g = Graphics.FromHwnd(hHeader))
+                                    using (var brush = new SolidBrush(ThemeManager.SurfaceColor))
+                                    {
+                                        var emptyRect = new Rectangle(lastColumnRight, 0, emptyWidth, headerRect.Bottom - headerRect.Top);
+                                        g.FillRectangle(brush, emptyRect);
+                                        
+                                        // Draw the bottom accent line
+                                        using (var pen = new Pen(ThemeManager.AccentColor, 1))
+                                        {
+                                            g.DrawLine(pen, lastColumnRight, emptyRect.Height - 1, headerWidth, emptyRect.Height - 1);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            [DllImport("user32.dll")]
+            private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+            [StructLayout(LayoutKind.Sequential)]
+            private struct RECT
+            {
+                public int Left;
+                public int Top;
+                public int Right;
+                public int Bottom;
             }
         }
 
