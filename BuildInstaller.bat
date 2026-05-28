@@ -37,6 +37,17 @@ if exist "%~dp0TinyWall\TinyWall.sln" (
 
 cd /d "%REPO_DIR%"
 
+:: Compile the Vite React static web files before packaging
+echo Compiling Vite React static web assets...
+cd /d "%~dp0TinyWall\Web_React"
+call npm run build
+if %errorLevel% neq 0 (
+    echo ERROR: Vite React build failed!
+    pause
+    exit /b
+)
+cd /d "%REPO_DIR%"
+
 :: Compile the TinyWall C# project first to ensure the staged binaries are fully up-to-date with version.json
 echo [0/5] Compiling TinyWall binaries...
 

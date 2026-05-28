@@ -77,6 +77,17 @@ if defined DOTNET_SDK_DIR (
 )
 set "MSBuildEnableWorkloadResolver=false"
 
+:: Compile the Vite React static web files before compiling the C# project
+echo Compiling Vite React static web assets...
+cd /d "%~dp0TinyWall\Web_React"
+call npm run build
+if %errorLevel% neq 0 (
+    echo ERROR: Vite React build failed!
+    pause
+    exit /b
+)
+cd /d "%REPO_DIR%"
+
 if exist "%MSBUILD_PATH%" (
     :: Run MSBuild directly on the TinyWall project
     "%MSBUILD_PATH%" TinyWall\TinyWall.csproj /t:Rebuild /p:Configuration=Release
