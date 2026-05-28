@@ -19,6 +19,7 @@
   --font-family: 'Outfit', sans-serif;
   --border-radius: 12px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color-scheme: dark;
 }
 
 * {
@@ -87,9 +88,7 @@ h1 {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  background: linear-gradient(to right, #ffffff, #dcdcf0);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .logo-sub {
@@ -246,9 +245,7 @@ h1 {
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(to right, #ffffff, var(--text-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .stat-rate {
@@ -343,6 +340,15 @@ h1 {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 10px var(--accent-glow);
+}
+
+select.search-input option {
+  background-color: var(--surface-color);
+  color: white;
+}
+
+input[type="datetime-local"].search-input {
+  color-scheme: dark;
 }
 
 .search-icon {

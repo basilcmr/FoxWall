@@ -1,5 +1,3 @@
-/* FoxWall Security Monitor Dashboard Logic */
-
 let activeTab = 'sockets';
 let socketData = [];
 let logData = [];
@@ -9,10 +7,9 @@ let socketSearchQuery = '';
 let logFilter = 'all';
 let logSearchQuery = '';
 
-// Chart history
-const maxHistory = 60;
-const rxHistory = new Array(maxHistory).fill(0);
-const txHistory = new Array(maxHistory).fill(0);
+// Historical analytics variables
+let analyticsRange = '5m';
+let analyticsPoints = [];
 
 // Sorting states
 let socketSortCol = 'time';
@@ -23,6 +20,19 @@ let logSortAsc = false;
 // Initialize
 window.onload = () => {
   initChart();
+  
+  // Set default dates for mini-calendar (custom range pickers)
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  
+  const toLocalIso = (date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+  
+  document.getElementById('customRangeStart').value = toLocalIso(oneHourAgo);
+  document.getElementById('customRangeEnd').value = toLocalIso(now);
+  
   pollData();
   setInterval(pollData, 1500);
 };
@@ -41,21 +51,33 @@ function switchTab(tabId, element) {
 
   if (tabId === 'analytics') {
     resizeCanvas();
+    fetchAnalyticsHistory();
   }
 }
 
 // Fetch data from local API
 async function pollData() {
   try {
-    const [statusRes, connectionsRes, logsRes] = await Promise.all([
+    const promises = [
       fetch('/api/status').then(r => r.json()),
       fetch('/api/connections').then(r => r.json()),
       fetch('/api/logs').then(r => r.json())
-    ]);
+    ];
 
-    statusData = statusRes;
-    socketData = connectionsRes;
-    logData = logsRes;
+    // If analytics tab is active and not in custom range, dynamically poll current timeline
+    if (activeTab === 'analytics' && analyticsRange !== 'custom') {
+      promises.push(fetch(`/api/analytics/history?range=${analyticsRange}`).then(r => r.json()));
+    }
+
+    const results = await Promise.all(promises);
+
+    statusData = results[0];
+    socketData = results[1];
+    logData = results[2];
+
+    if (results[3]) {
+      analyticsPoints = results[3];
+    }
 
     updateUI();
   } catch (err) {
@@ -97,12 +119,6 @@ function updateUI() {
     panicBtn.classList.remove('active');
     panicBtn.innerHTML = '⚠️ Global Panic Switch';
   }
-
-  // Update chart data
-  rxHistory.push(statusData.rxSpeed / 1024); // KB/s
-  rxHistory.shift();
-  txHistory.push(statusData.txSpeed / 1024); // KB/s
-  txHistory.shift();
 
   // Redraw canvas if active
   if (activeTab === 'analytics') {
@@ -362,6 +378,15 @@ function drawChart() {
   const h = chartCanvas.height;
   ctx.clearRect(0, 0, w, h);
 
+  const points = analyticsPoints;
+  if (points.length === 0) {
+    ctx.font = '14px Outfit';
+    ctx.fillStyle = 'var(--text-secondary)';
+    ctx.textAlign = 'center';
+    ctx.fillText("No historical network data recorded in this range.", w / 2, h / 2);
+    return;
+  }
+
   // Draw background grid lines
   ctx.strokeStyle = 'rgba(255,255,255,0.03)';
   ctx.lineWidth = 1;
@@ -373,29 +398,31 @@ function drawChart() {
     ctx.stroke();
   }
 
-  // Find max value in history to scale
-  const maxVal = Math.max(...rxHistory, ...txHistory, 10); // Minimum scale of 10 KB/s
+  // Find max value in history to scale (convert bytes to KB)
+  const rxValues = points.map(p => p.Rx / 1024);
+  const txValues = points.map(p => p.Tx / 1024);
+  const maxVal = Math.max(...rxValues, ...txValues, 10); // Minimum scale of 10 KB/s
 
   // Helper to get coordinates
   function getX(index) {
-    return (w / (maxHistory - 1)) * index;
+    return (w / (points.length - 1)) * index;
   }
 
   function getY(value) {
-    return h - (h - 40) * (value / maxVal) - 20;
+    return h - (h - 60) * (value / maxVal) - 30;
   }
 
   // Draw Rx (Download) Area & Line
-  drawPath(rxHistory, 'rgba(0, 255, 204, 0.15)', 'rgba(0, 255, 204, 1)', 2);
+  drawPath(rxValues, 'rgba(0, 255, 204, 0.15)', 'rgba(0, 255, 204, 1)', 2);
 
   // Draw Tx (Upload) Area & Line
-  drawPath(txHistory, 'rgba(138, 43, 226, 0.15)', 'rgba(138, 43, 226, 1)', 2);
+  drawPath(txValues, 'rgba(138, 43, 226, 0.15)', 'rgba(138, 43, 226, 1)', 2);
 
   function drawPath(history, fillGradient, strokeColor, lineWidth) {
     ctx.beginPath();
     ctx.moveTo(getX(0), getY(history[0]));
 
-    for (let i = 1; i < maxHistory; i++) {
+    for (let i = 1; i < points.length; i++) {
       ctx.lineTo(getX(i), getY(history[i]));
     }
 
@@ -408,7 +435,7 @@ function drawChart() {
     ctx.shadowBlur = 0; // reset
 
     // Fill area
-    ctx.lineTo(getX(maxHistory - 1), h);
+    ctx.lineTo(getX(points.length - 1), h);
     ctx.lineTo(getX(0), h);
     ctx.closePath();
     ctx.fillStyle = fillGradient;
@@ -417,10 +444,46 @@ function drawChart() {
 
   // Draw legend labels on chart
   ctx.font = '12px Outfit';
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#00ffcc';
   ctx.fillText(`Down: ${formatSpeed(statusData.rxSpeed)}`, 20, 30);
   ctx.fillStyle = '#8a2be2';
   ctx.fillText(`Up: ${formatSpeed(statusData.txSpeed)}`, 20, 50);
+}
+
+// Fetch historical analytics data
+async function fetchAnalyticsHistory() {
+  try {
+    let url = `/api/analytics/history?range=${analyticsRange}`;
+    if (analyticsRange === 'custom') {
+      const start = document.getElementById('customRangeStart').value;
+      const end = document.getElementById('customRangeEnd').value;
+      url += `&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    }
+
+    const res = await fetch(url);
+    analyticsPoints = await res.json();
+    drawChart();
+  } catch (err) {
+    console.error("Could not fetch analytics history:", err);
+  }
+}
+
+// Handler for standard timeline range changes
+function changeAnalyticsRange(val) {
+  analyticsRange = val;
+  const picker = document.getElementById('customRangePicker');
+  if (val === 'custom') {
+    picker.style.display = 'flex';
+  } else {
+    picker.style.display = 'none';
+    fetchAnalyticsHistory();
+  }
+}
+
+// Handler for calendar picker selection
+function applyCustomAnalyticsRange() {
+  fetchAnalyticsHistory();
 }
 
 // Generate Bandwidth by Process indicators

@@ -21,12 +21,14 @@ namespace pylorak.TinyWall
         private readonly string WebRoot;
         private readonly TinyWallController Controller;
         private bool PanicActive = false;
+        private readonly TrafficHistoryLogger HistoryLogger;
 
         public DashboardServer(TinyWallController ctrl)
         {
             this.Controller = ctrl;
             // Web files will be copied to a 'Web' directory alongside the executable
             this.WebRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Web");
+            this.HistoryLogger = new TrafficHistoryLogger();
         }
 
         public void Start()
@@ -210,6 +212,33 @@ namespace pylorak.TinyWall
                 case "/api/logs":
                     responseData = GetFirewallLogs();
                     break;
+
+                case "/api/analytics/history":
+                    {
+                        DateTime end = DateTime.Now;
+                        DateTime start = end.AddMinutes(-5);
+
+                        string range = request.QueryString["range"] ?? "5m";
+                        switch (range)
+                        {
+                            case "1m": start = end.AddMinutes(-1); break;
+                            case "5m": start = end.AddMinutes(-5); break;
+                            case "1h": start = end.AddHours(-1); break;
+                            case "5h": start = end.AddHours(-5); break;
+                            case "1d": start = end.AddDays(-1); break;
+                            case "2d": start = end.AddDays(-2); break;
+                            case "5d": start = end.AddDays(-5); break;
+                            case "1w": start = end.AddDays(-7); break;
+                            case "custom":
+                                if (DateTime.TryParse(request.QueryString["start"], out DateTime parsedStart))
+                                    start = parsedStart;
+                                if (DateTime.TryParse(request.QueryString["end"], out DateTime parsedEnd))
+                                    end = parsedEnd;
+                                break;
+                        }
+                        responseData = HistoryLogger.GetHistory(start, end);
+                        break;
+                    }
 
                 case "/api/action/panic":
                     if (request.HttpMethod == "POST")
@@ -395,6 +424,7 @@ namespace pylorak.TinyWall
         public void Dispose()
         {
             Stop();
+            HistoryLogger.Dispose();
         }
     }
 }
