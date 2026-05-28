@@ -295,6 +295,11 @@ namespace pylorak.TinyWall
         private System.Windows.Forms.ToolStripMenuItem mnuModeJellyMode;
         private System.Windows.Forms.ToolStripMenuItem mnuUpdateFromUpstream;
 
+        // [FoxWall Enhancement] - Start of Custom Web Dashboard Declarations
+        private System.Windows.Forms.ToolStripMenuItem mnuSecurityMonitor;
+        private DashboardServer? DashboardServerInstance;
+        // [FoxWall Enhancement] - End of Custom Web Dashboard Declarations
+
         #endregion
 
         private readonly MouseInterceptor MouseInterceptor = new();
@@ -377,6 +382,18 @@ namespace pylorak.TinyWall
             System.Windows.Forms.Application.Idle += Application_Idle;
             using var p = Process.GetCurrentProcess();
             ProcessManager.WakeMessageQueues(p);
+
+            // [FoxWall Enhancement] - Start of Custom Web Dashboard Setup
+            this.mnuSecurityMonitor = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuSecurityMonitor.Image = global::pylorak.TinyWall.Resources.Icons.connections;
+            this.mnuSecurityMonitor.Name = "mnuSecurityMonitor";
+            this.mnuSecurityMonitor.Text = "Security Monitor Dashboard...";
+            this.mnuSecurityMonitor.Click += new System.EventHandler(this.mnuSecurityMonitor_Click);
+            this.TrayMenu.Items.Insert(5, this.mnuSecurityMonitor);
+
+            DashboardServerInstance = new DashboardServer(this);
+            DashboardServerInstance.Start();
+            // [FoxWall Enhancement] - End of Custom Web Dashboard Setup
         }
 
         private void Application_Idle(object sender, EventArgs e)
@@ -398,6 +415,10 @@ namespace pylorak.TinyWall
         {
             if (disposing && (components != null))
             {
+                // [FoxWall Enhancement] - Start of Custom Web Dashboard Dispose
+                DashboardServerInstance?.Dispose();
+                // [FoxWall Enhancement] - End of Custom Web Dashboard Dispose
+
                 // Manually added
                 HotKeyWhitelistExecutable?.Dispose();
                 HotKeyWhitelistProcess?.Dispose();
@@ -1302,6 +1323,23 @@ namespace pylorak.TinyWall
                 ShowBalloonTip(Resources.Messages.CouldNotElevatePrivileges, ToolTipIcon.Error);
             }
         }
+
+        // [FoxWall Enhancement] - Start of Custom Web Dashboard Event Handler
+        private void mnuSecurityMonitor_Click(object sender, EventArgs e)
+        {
+            if (FlashIfOpen(typeof(SettingsForm)))
+                return;
+
+            try
+            {
+                Utils.StartProcess("http://localhost:5678/", string.Empty, false);
+            }
+            catch (Exception ex)
+            {
+                ShowBalloonTip("Failed to open Security Monitor Dashboard: " + ex.Message, ToolTipIcon.Error);
+            }
+        }
+        // [FoxWall Enhancement] - End of Custom Web Dashboard Event Handler
 
         private void mnuConnections_Click(object sender, EventArgs e)
         {

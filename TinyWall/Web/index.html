@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FoxWall Security Monitor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <!-- Premium Header -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon">F</div>
+      <div>
+        <h1>FoxWall</h1>
+        <div class="logo-sub">Security Monitor</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span id="statusText">Active Guard</span>
+      </div>
+      <button class="panic-btn" id="panicBtn" onclick="togglePanicSwitch()">
+        <span class="panic-icon">⚠️</span> Global Panic Switch
+      </button>
+    </div>
+  </header>
+
+  <!-- Dashboard Container -->
+  <div class="dashboard-container">
+    
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+      <div class="nav-item active" onclick="switchTab('sockets', this)">
+        <span class="nav-icon">🌐</span>
+        <span>Live Sockets Feed</span>
+      </div>
+      <div class="nav-item" onclick="switchTab('analytics', this)">
+        <span class="nav-icon">📊</span>
+        <span>Bandwidth Analytics</span>
+      </div>
+      <div class="nav-item" onclick="switchTab('logs', this)">
+        <span class="nav-icon">🛡️</span>
+        <span>Firewall Events</span>
+      </div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="workspace">
+      
+      <!-- Stats Summary Row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-title">Total Active Sockets</div>
+          <div class="stat-value" id="statSocketsCount">0</div>
+          <div class="stat-rate in" id="statTrafficRx">0.0 KiB/s Down</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Blocked (Last 5m)</div>
+          <div class="stat-value" id="statBlockedCount" style="color: var(--danger-color);">0</div>
+          <div class="stat-rate out" id="statTrafficTx">0.0 KiB/s Up</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Security State</div>
+          <div class="stat-value" id="statFirewallMode" style="font-size: 22px; padding-top: 5px;">Normal Mode</div>
+          <div class="stat-rate" id="statLockState" style="color: var(--text-secondary);">Unlocked</div>
+        </div>
+      </div>
+
+      <!-- TAB 1: Live Sockets Feed -->
+      <div id="tab-sockets" class="tab-content active">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Active Connections & Sockets</div>
+            <div class="controls-box">
+              <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="socketSearch" placeholder="Search by name, path, or IP..." oninput="filterSockets()">
+              </div>
+              <div class="filter-btn-group">
+                <button class="filter-btn active" onclick="filterSocketsCategory('all', this)">All</button>
+                <button class="filter-btn" onclick="filterSocketsCategory('active', this)">Active</button>
+                <button class="filter-btn" onclick="filterSocketsCategory('listening', this)">Listening</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th onclick="sortTable('name')">Application</th>
+                  <th onclick="sortTable('protocol')">Protocol</th>
+                  <th onclick="sortTable('local')">Local Address</th>
+                  <th onclick="sortTable('remote')">Remote Address</th>
+                  <th onclick="sortTable('state')">State</th>
+                  <th onclick="sortTable('time')">Modified Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="socketsTableBody">
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    Loading live network connections...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Bandwidth Analytics -->
+      <div id="tab-analytics" class="tab-content">
+        <div class="grid-2col">
+          
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Network Throughput (Last 60s)</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="bandwidthChart"></canvas>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Bandwidth by Process</div>
+            </div>
+            <div class="bandwidth-list" id="bandwidthList">
+              <div style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                No active traffic data.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="alert-card" id="exfiltrationAlert" style="display: none;">
+          <span style="font-size: 20px;">🛡️</span>
+          <div>
+            <strong>Exfiltration Guard Notice:</strong> High volumes of outbound data detected from non-verified background application to remote server. Verify digital signature or restrict socket ports immediately.
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Firewall Events (Logs) -->
+      <div id="tab-logs" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Recent Firewall Log Actions</div>
+            <div class="controls-box">
+              <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="logSearch" placeholder="Filter logs..." oninput="filterLogs()">
+              </div>
+              <div class="filter-btn-group">
+                <button class="filter-btn active" onclick="filterLogsCategory('all', this)">All Events</button>
+                <button class="filter-btn" onclick="filterLogsCategory('blocked', this)">Blocked</button>
+                <button class="filter-btn" onclick="filterLogsCategory('allowed', this)">Allowed</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th onclick="sortLogs('time')">Timestamp</th>
+                  <th onclick="sortLogs('name')">Application</th>
+                  <th onclick="sortLogs('protocol')">Protocol</th>
+                  <th onclick="sortLogs('direction')">Direction</th>
+                  <th onclick="sortLogs('local')">Local Address</th>
+                  <th onclick="sortLogs('remote')">Remote Address</th>
+                  <th onclick="sortLogs('action')">Action</th>
+                  <th>Whitelist</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    Loading recent security events...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

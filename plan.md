@@ -17,7 +17,8 @@ This document outlines the detailed technical design, architectural changes, and
 - `[ ]` **12. Auto-Learn Mode with Interactive Prompts** (Pending - *Difficulty: High / Very High*)
 - `[ ]` **13. Geo-IP Real-Time Map & Flag Auditing** (Pending - *Difficulty: High / Very High*)
 - `[ ]` **14. Parent-Process Security Guard (Anti-Exploit Blocker)** (Pending - *Difficulty: Very High / Extremely High*)
-- `[ ]` **15. FoxWall Security Monitor Dashboard** (Pending - *Difficulty: Extremely High*)
+- `[x]` **15. FoxWall Security Monitor Dashboard** (Completed in v1.2.0 - *Difficulty: Extremely High*)
+- `[ ]` **16. Full Web-Based Settings & Rules UI Migration** (Pending - *Difficulty: High*)
 
 ---
 
@@ -443,3 +444,24 @@ To make firewall modes dynamic instead of hardcoded in a static C# `enum`:
 #### 5. Integration Hooks & Segregation
 - To respect the **AGENT.md** rules, keep this entire monitoring dashboard completely isolated inside dedicated files (e.g., `SecurityMonitorForm.cs`, `TrafficAuditorEngine.cs`, `ConnectionTracker.cs`).
 - Trigger this dashboard directly via a lightweight hook on the Tray Controller context menu (e.g., "Show Security Monitor...").
+
+---
+
+## 16. Full Web-Based Settings & Rules UI Migration [PENDING]
+**Difficulty:** High
+**Goal:** Migrate the entire, original legacy C# WinForms application setup, configuration panels, application exceptions listings, password locks, and controller prompts into a fully unified, modern single-page web application.
+
+### Architectural Changes & Implementation Plan
+
+#### 1. Transition to Embedded Web App Architecture
+- Replace all legacy Windows Forms forms (`SettingsForm.cs`, `ApplicationExceptionForm.cs`, `PasswordForm.cs`, etc.) with a single, premium web-based administration dashboard.
+- The controller will serve this comprehensive control center over the local HTTP server, ensuring high-speed access to all setting profiles, exception rulesets, and blocking states.
+
+#### 2. Bidirectional API Expansion
+- Build out full RESTful API endpoints and WebSocket listeners on the local `HttpListener` backend to map all read/write settings operations.
+- Actions like password lock validation, profile switches, custom rule additions, and system audits will run via highly efficient, secure JSON messaging over loopback connection.
+
+#### 3. Legacy UI Deprecation
+- Ditch native WinForms controls and windows entirely, except for the tiny system tray notifications and context hooks.
+- Offloading GUI rendering entirely to the browser prevents main thread blocks, resolves high-DPI scaling issues natively, and supports unlimited custom styling and animations with zero CPU overhead for C# code.
+

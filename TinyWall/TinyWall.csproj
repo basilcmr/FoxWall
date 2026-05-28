@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -614,6 +614,11 @@
     <EmbeddedResource Update="UwpPackagesForm.pt-BR.resx">
       <DependentUpon>UwpPackagesForm.cs</DependentUpon>
     </EmbeddedResource>
+    
+    <!-- [FoxWall Enhancement] - Copy Static Web Assets for Dashboard -->
+    <None Update="Web\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     
   </ItemGroup>
 </Project>
