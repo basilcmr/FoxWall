@@ -50,6 +50,10 @@ namespace pylorak.TinyWall
 
         public long CurrentRx { get; private set; }
         public long CurrentTx { get; private set; }
+        // [FoxWall Enhancement] - Physical Bandwidth Properties
+        public long CurrentPhysicalRx { get; private set; }
+        public long CurrentPhysicalTx { get; private set; }
+        // [FoxWall Enhancement] - End of Physical Bandwidth Properties
 
         public TrafficHistoryLogger()
         {
@@ -71,25 +75,54 @@ namespace pylorak.TinyWall
                 Monitor.Update();
                 long rx = Monitor.BytesReceivedPerSec;
                 long tx = Monitor.BytesSentPerSec;
+                // [FoxWall Enhancement] - Measure Physical Adapters
+                long rxPhys = Monitor.PhysicalBytesReceivedPerSec;
+                long txPhys = Monitor.PhysicalBytesSentPerSec;
 
                 CurrentRx = rx;
                 CurrentTx = tx;
+                CurrentPhysicalRx = rxPhys;
+                CurrentPhysicalTx = txPhys;
+                // [FoxWall Enhancement] - End of Measure Physical Adapters
 
                 DateTime now = DateTime.Now;
                 string fileName = $"traffic_{now:yyyy-MM-dd}.csv";
                 string filePath = Path.Combine(HistoryDir, fileName);
 
                 string peakTask = GetPeakTask(rx + tx);
+                // [FoxWall Enhancement] - Get Peak Task for Physical Adapters
+                string peakTaskPhys = GetPeakTask(rxPhys + txPhys);
+                // [FoxWall Enhancement] - End of Get Peak Task for Physical Adapters
 
                 lock (LockObj)
                 {
                     bool exists = File.Exists(filePath);
+                    // [FoxWall Enhancement] - Handle CSV Header Migration Gracefully
+                    if (exists)
+                    {
+                        try
+                        {
+                            using (var reader = new StreamReader(filePath, Encoding.UTF8))
+                            {
+                                string firstLine = reader.ReadLine() ?? "";
+                                if (!firstLine.Contains("rx_phys"))
+                                {
+                                    reader.Close();
+                                    File.Delete(filePath);
+                                    exists = false;
+                                }
+                            }
+                        }
+                        catch {}
+                    }
+                    
                     using var writer = new StreamWriter(filePath, true, Encoding.UTF8);
                     if (!exists)
                     {
-                        writer.WriteLine("time,rx,tx,peak_task");
+                        writer.WriteLine("time,rx,tx,rx_phys,tx_phys,peak_task,peak_task_phys");
                     }
-                    writer.WriteLine($"{now:yyyy-MM-ddTHH:mm:ss},{rx},{tx},{peakTask}");
+                    writer.WriteLine($"{now:yyyy-MM-ddTHH:mm:ss},{rx},{tx},{rxPhys},{txPhys},{peakTask},{peakTaskPhys}");
+                    // [FoxWall Enhancement] - End of Handle CSV Header Migration Gracefully
                 }
             }
             catch { }
@@ -306,14 +339,39 @@ namespace pylorak.TinyWall
                             {
                                 if (time >= start && time <= end)
                                 {
-                                    string peakTask = parts.Length >= 4 ? parts[3] : "System / Idle";
+                                    long rx = long.TryParse(parts[1], out long r) ? r : 0;
+                                    long tx = long.TryParse(parts[2], out long t) ? t : 0;
+                                    
+                                    // [FoxWall Enhancement] - Parse both physical and total bandwidth
+                                    long rxPhys = rx;
+                                    long txPhys = tx;
+                                    string peakTask = "System / Idle";
+                                    string peakTaskPhys = "System / Idle";
+
+                                    if (parts.Length >= 7)
+                                    {
+                                        rxPhys = long.TryParse(parts[3], out long rp) ? rp : 0;
+                                        txPhys = long.TryParse(parts[4], out long tp) ? tp : 0;
+                                        peakTask = parts[5];
+                                        peakTaskPhys = parts[6];
+                                    }
+                                    else if (parts.Length >= 4)
+                                    {
+                                        peakTask = parts[3];
+                                        peakTaskPhys = parts[3];
+                                    }
+
                                     points.Add(new HistoryPoint
                                     {
                                         Time = parts[0],
-                                        Rx = long.TryParse(parts[1], out long rx) ? rx : 0,
-                                        Tx = long.TryParse(parts[2], out long tx) ? tx : 0,
-                                        PeakTask = peakTask
+                                        Rx = rx,
+                                        Tx = tx,
+                                        PeakTask = peakTask,
+                                        RxPhysical = rxPhys,
+                                        TxPhysical = txPhys,
+                                        PeakTaskPhysical = peakTaskPhys
                                     });
+                                    // [FoxWall Enhancement] - End of Parse both physical and total bandwidth
                                 }
                             }
                         }
@@ -338,5 +396,10 @@ namespace pylorak.TinyWall
         public long Rx { get; set; }
         public long Tx { get; set; }
         public string PeakTask { get; set; }
+        // [FoxWall Enhancement] - Dual Telemetry Fields
+        public long RxPhysical { get; set; }
+        public long TxPhysical { get; set; }
+        public string PeakTaskPhysical { get; set; }
+        // [FoxWall Enhancement] - End of Dual Telemetry Fields
     }
 }

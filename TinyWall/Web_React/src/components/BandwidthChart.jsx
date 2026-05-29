@@ -29,8 +29,10 @@ export default function BandwidthChart({
   onApplyCustomRange,
   onOpenClickModal,
   rxSpeed,
-  txSpeed
+  txSpeed,
+  adapterView
 }) {
+  const isPhys = adapterView === 'physical';
   const canvasRef = useRef(null);
   const [hoverIndex, setHoverIndex] = useState(-1);
   const [tooltipData, setTooltipData] = useState(null);
@@ -88,8 +90,10 @@ export default function BandwidthChart({
       ctx.stroke();
     }
 
-    const rxValues = points.map(p => p.Rx / 1024);
-    const txValues = points.map(p => p.Tx / 1024);
+    // [FoxWall Enhancement] - Select matching metrics based on Adapter View
+    const rxValues = points.map(p => (isPhys ? (p.RxPhysical ?? p.Rx) : p.Rx) / 1024);
+    const txValues = points.map(p => (isPhys ? (p.TxPhysical ?? p.Tx) : p.Tx) / 1024);
+    // [FoxWall Enhancement] - End of Select matching metrics
     const maxVal = Math.max(...rxValues, ...txValues, 10); // Minimum scale of 10 KB/s
 
     const getX = (index) => {
@@ -372,60 +376,67 @@ export default function BandwidthChart({
               pointerEvents: 'none'
             }}
           >
+            {/* [FoxWall Enhancement] - Dual Telemetry Tooltip Values */}
             <div style={{ fontWeight: 600, color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '4px' }}>
               {new Date(tooltipData.point.Time).toLocaleDateString()} {new Date(tooltipData.point.Time).toLocaleTimeString()}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
               <span style={{ color: 'var(--success-color)', fontSize: '10px' }}>●</span>
-              <span style={{ fontSize: '12px' }}>Down: <strong style={{ color: 'var(--success-color)' }}>{formatSpeed(tooltipData.point.Rx)}</strong></span>
+              <span style={{ fontSize: '12px' }}>Down: <strong style={{ color: 'var(--success-color)' }}>{formatSpeed(isPhys ? (tooltipData.point.RxPhysical ?? tooltipData.point.Rx) : tooltipData.point.Rx)}</strong></span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <span style={{ color: 'var(--accent-color)', fontSize: '10px' }}>●</span>
-              <span style={{ fontSize: '12px' }}>Up: <strong style={{ color: 'var(--accent-color)' }}>{formatSpeed(tooltipData.point.Tx)}</strong></span>
+              <span style={{ fontSize: '12px' }}>Up: <strong style={{ color: 'var(--accent-color)' }}>{formatSpeed(isPhys ? (tooltipData.point.TxPhysical ?? tooltipData.point.Tx) : tooltipData.point.Tx)}</strong></span>
             </div>
             <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
                 {detailedTooltipCheck ? 'Parsed Task Breakdown' : 'Heavy Peak Task'}
               </div>
               
-              {detailedTooltipCheck && tooltipData.point.PeakTask && tooltipData.point.PeakTask.includes(';') ? (
-                tooltipData.point.PeakTask.split(';').map((t, idx) => {
-                  const parts = t.split(' (');
-                  const name = parts[0];
-                  const rawSpeed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
-                  
-                  const match = rawSpeed.match(/(\d+)\s+connections?\s*-\s*(.+)/);
-                  
-                  let connText = '';
-                  let rateText = rawSpeed;
-                  
-                  if (match) {
-                    connText = `${match[1]}c`;
-                    rateText = match[2];
-                  }
+              {(() => {
+                const currentPeak = isPhys ? (tooltipData.point.PeakTaskPhysical ?? tooltipData.point.PeakTask) : tooltipData.point.PeakTask;
+                if (detailedTooltipCheck && currentPeak && currentPeak.includes(';')) {
+                  return currentPeak.split(';').map((t, idx) => {
+                    const parts = t.split(' (');
+                    const name = parts[0];
+                    const rawSpeed = parts[1] ? parts[1].replace(')', '') : '0.0 KiB/s';
+                    
+                    const match = rawSpeed.match(/(\d+)\s+connections?\s*-\s*(.+)/);
+                    
+                    let connText = '';
+                    let rateText = rawSpeed;
+                    
+                    if (match) {
+                      connText = `${match[1]}c`;
+                      rateText = match[2];
+                    }
 
-                  const isDownloadDominant = (tooltipData.point.Rx || 0) > (tooltipData.point.Tx || 0);
-                  const rateColor = isDownloadDominant ? 'var(--success-color)' : 'var(--accent-color)';
+                    const isDownloadDominant = (isPhys ? (tooltipData.point.RxPhysical ?? tooltipData.point.Rx) : tooltipData.point.Rx) > (isPhys ? (tooltipData.point.TxPhysical ?? tooltipData.point.Tx) : tooltipData.point.Tx);
+                    const rateColor = isDownloadDominant ? 'var(--success-color)' : 'var(--accent-color)';
 
-                  return (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginTop: '5px', fontSize: '11px' }}>
-                      <span style={{ color: 'white', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ color: 'var(--accent-color)', fontSize: '8px' }}>▶</span> {idx + 1}. {name}
-                      </span>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', fontWeight: 600 }}>
-                        {connText && <span style={{ color: '#ffcc00' }}>{connText}</span>}
-                        {connText && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
-                        <span style={{ color: rateColor }}>{rateText}</span>
+                    return (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginTop: '5px', fontSize: '11px' }}>
+                        <span style={{ color: 'white', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ color: 'var(--accent-color)', fontSize: '8px' }}>▶</span> {idx + 1}. {name}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', fontWeight: 600 }}>
+                          {connText && <span style={{ color: '#ffcc00' }}>{connText}</span>}
+                          {connText && <span style={{ color: 'var(--text-secondary)' }}>-</span>}
+                          <span style={{ color: rateColor }}>{rateText}</span>
+                        </div>
                       </div>
+                    );
+                  });
+                } else {
+                  return (
+                    <div style={{ color: '#ffcc00', fontWeight: 600, fontSize: '12px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>⚡</span> <span>{currentPeak ? currentPeak.split(';')[0] : 'Idle'}</span>
                     </div>
                   );
-                })
-              ) : (
-                <div style={{ color: '#ffcc00', fontWeight: 600, fontSize: '12px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>⚡</span> <span>{tooltipData.point.PeakTask ? tooltipData.point.PeakTask.split(';')[0] : 'Idle'}</span>
-                </div>
-              )}
+                }
+              })()}
             </div>
+            {/* [FoxWall Enhancement] - End of Dual Telemetry Tooltip Values */}
           </div>
         )}
 

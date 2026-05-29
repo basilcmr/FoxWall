@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Search, ShieldAlert } from 'lucide-react';
+import { Copy, Search, ShieldAlert, FolderOpen } from 'lucide-react';
 
 export default function ProcessActions({
   processName,
@@ -91,6 +91,22 @@ export default function ProcessActions({
       >
         <ShieldAlert size={12} />
       </span>
+      {/* [FoxWall Enhancement] - Open File Location Button */}
+      <span
+        className="inline-action-btn"
+        title="Open File Location"
+        onClick={async (e) => {
+          e.stopPropagation();
+          try {
+            await fetch(`/api/action/open-folder?path=${encodeURIComponent(resolvedPath)}`, { method: 'POST' });
+          } catch (err) {
+            console.error("Failed to open file location:", err);
+          }
+        }}
+      >
+        <FolderOpen size={12} />
+      </span>
+      {/* [FoxWall Enhancement] - End of Open File Location Button */}
     </span>
   );
 }

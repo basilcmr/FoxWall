@@ -225,6 +225,10 @@ namespace pylorak.TinyWall
                         locked = GlobalInstances.Controller.IsServerLocked,
                         rxSpeed = HistoryLogger.CurrentRx,
                         txSpeed = HistoryLogger.CurrentTx,
+                        // [FoxWall Enhancement] - Add Physical Speed Status Properties
+                        rxSpeedPhysical = HistoryLogger.CurrentPhysicalRx,
+                        txSpeedPhysical = HistoryLogger.CurrentPhysicalTx,
+                        // [FoxWall Enhancement] - End of Physical Speed Status Properties
                         panicActive = PanicActive,
                         version = GetVersion()
                     };
@@ -317,6 +321,46 @@ namespace pylorak.TinyWall
                                 using var proc = Process.GetProcessById((int)pid);
                                 proc.Kill();
                                 responseData = new { success = true };
+                            }
+                            catch (Exception ex)
+                            {
+                                responseData = new { success = false, error = ex.Message };
+                            }
+                        }
+                        else
+                        {
+                            response.StatusCode = (int)HttpStatusCode.BadRequest;
+                        }
+                    }
+                    else
+                    {
+                        response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+                    }
+                    break;
+
+                case "/api/action/open-folder":
+                    if (request.HttpMethod == "POST")
+                    {
+                        string? path = request.QueryString["path"];
+                        if (!string.IsNullOrEmpty(path))
+                        {
+                            try
+                            {
+                                string resolved = WildcardHelper.ResolveWildcardPath(path);
+                                if (File.Exists(resolved))
+                                {
+                                    Process.Start("explorer.exe", $"/select,\"{resolved}\"");
+                                    responseData = new { success = true };
+                                }
+                                else if (Directory.Exists(resolved))
+                                {
+                                    Process.Start("explorer.exe", $"\"{resolved}\"");
+                                    responseData = new { success = true };
+                                }
+                                else
+                                {
+                                    responseData = new { success = false, error = "File or folder does not exist." };
+                                }
                             }
                             catch (Exception ex)
                             {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Security;
 using System.Runtime.InteropServices;
 using pylorak.Utilities;
@@ -23,11 +23,15 @@ namespace pylorak.Windows
         public void Update()
         {
             _ = NativeMethods.PdhCollectQueryData(hQuery);
-            BytesSentPerSec = ReadLongCounter(hTxCounter);
-            BytesReceivedPerSec = ReadLongCounter(hRxCounter);
+            BytesSentPerSec = ReadLongCounter(hTxCounter, false);
+            BytesReceivedPerSec = ReadLongCounter(hRxCounter, false);
+            // [FoxWall Enhancement] - Measure Physical Adapters Only
+            PhysicalBytesSentPerSec = ReadLongCounter(hTxCounter, true);
+            PhysicalBytesReceivedPerSec = ReadLongCounter(hRxCounter, true);
+            // [FoxWall Enhancement] - End of Physical Adapters Only
         }
 
-        private long ReadLongCounter(IntPtr hCounter)
+        private long ReadLongCounter(IntPtr hCounter, bool physicalOnly = false)
         {
             const int PDH_CSTATUS_VALID_DATA = 0;
             const int PDH_CSTATUS_NEW_DATA = 1;
@@ -52,15 +56,43 @@ namespace pylorak.Windows
                     int largeValueOffset = IntPtr.Size * 2;
                     for (int i = 0; i < count; ++i)
                     {
-#if false
-                        PDH_FMT_COUNTERVALUE_ITEM item = (PDH_FMT_COUNTERVALUE_ITEM)Marshal.PtrToStructure((IntPtr)(bufferPtr + i * stride), typeof(PDH_FMT_COUNTERVALUE_ITEM));
-                        ret += item.FmtValue.largeValue;
-#else
                         byte* itemPtr = bufferPtr + i * stride;
                         int CStatus = *(int*)(itemPtr + statusOffset);
                         if ((CStatus == PDH_CSTATUS_NEW_DATA) || (CStatus == PDH_CSTATUS_VALID_DATA))
+                        {
+                            // [FoxWall Enhancement] - Filter Out Non-Physical/Virtual/VPN Interfaces
+                            if (physicalOnly)
+                            {
+                                IntPtr namePtr = *(IntPtr*)itemPtr;
+                                if (namePtr != IntPtr.Zero)
+                                {
+                                    string name = System.Runtime.InteropServices.Marshal.PtrToStringUni(namePtr) ?? "";
+                                    string lowerName = name.ToLowerInvariant();
+                                    if (lowerName.Contains("loopback") ||
+                                        lowerName.Contains("pseudo") ||
+                                        lowerName.Contains("virtual") ||
+                                        lowerName.Contains("vpn") ||
+                                        lowerName.Contains("tap") ||
+                                        lowerName.Contains("tun") ||
+                                        lowerName.Contains("vmware") ||
+                                        lowerName.Contains("vbox") ||
+                                        lowerName.Contains("virtualbox") ||
+                                        lowerName.Contains("hyper-v") ||
+                                        lowerName.Contains("vethernet") ||
+                                        lowerName.Contains("wan miniport") ||
+                                        lowerName.Contains("teredo") ||
+                                        lowerName.Contains("isatap") ||
+                                        lowerName.Contains("wi-fi direct") ||
+                                        lowerName.Contains("microsoft adapter"))
+                                    {
+                                        continue;
+                                    }
+                                }
+                            }
+                            // [FoxWall Enhancement] - End of Filter Out Non-Physical/Virtual/VPN Interfaces
+
                             ret += *(long*)(itemPtr + largeValueOffset);
-#endif
+                        }
                     }
 
                 }
@@ -85,6 +117,10 @@ namespace pylorak.Windows
 
         public long BytesSentPerSec { get; private set; }
         public long BytesReceivedPerSec { get; private set; }
+        // [FoxWall Enhancement] - Physical Speed Properties
+        public long PhysicalBytesSentPerSec { get; private set; }
+        public long PhysicalBytesReceivedPerSec { get; private set; }
+        // [FoxWall Enhancement] - End of Physical Speed Properties
 
 #if false   // Not used due to inability to compile without platform-dependence
         [StructLayout(LayoutKind.Explicit)]

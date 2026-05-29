@@ -11,6 +11,9 @@ export default function App() {
   const [socketData, setSocketData] = useState([]);
   const [logData, setLogData] = useState([]);
   const [statusData, setStatusData] = useState({ mode: 'Normal', locked: false, rxSpeed: 0, txSpeed: 0, panicActive: false, version: '' });
+  // [FoxWall Enhancement] - Network Adapter Filter View State (Physical vs. All)
+  const [adapterView, setAdapterView] = useState('physical');
+  // [FoxWall Enhancement] - End of Network Adapter Filter View State
 
   // Lookback filter states
   const [lookbackNum, setLookbackNum] = useState(5);
@@ -198,6 +201,10 @@ export default function App() {
     return `Last ${lookbackNum} ${label}`;
   };
 
+  // [FoxWall Enhancement] - Is Firewall Guard Active
+  const isGuardActive = statusData.mode !== 'Disabled';
+  // [FoxWall Enhancement] - End of Is Firewall Guard Active
+
   return (
     <>
       {/* Premium Header */}
@@ -217,29 +224,41 @@ export default function App() {
           </div>
         </div>
         <div className="header-actions">
-          <div className="status-badge" style={{
-            borderColor: 'var(--success-color)',
-            color: 'var(--success-color)'
-          }}>
-            <div className="status-dot"></div>
-            <span id="statusText">Active Guard</span>
+          {/* [FoxWall Enhancement] - Network Adapter Filter Toggle Switch */}
+          <div className="filter-btn-group" style={{ marginRight: '12px', border: '1px solid var(--border-color)', padding: '2px', borderRadius: '8px' }}>
+            <button
+              className={`filter-btn ${adapterView === 'physical' ? 'active' : ''}`}
+              style={{ fontSize: '11px', padding: '6px 12px', height: 'auto', borderRadius: '6px' }}
+              onClick={() => setAdapterView('physical')}
+              title="Filter traffic to physical network adapters only (prevents virtual bridge / VPN duplication)"
+            >
+              Physical Only
+            </button>
+            <button
+              className={`filter-btn ${adapterView === 'all' ? 'active' : ''}`}
+              style={{ fontSize: '11px', padding: '6px 12px', height: 'auto', borderRadius: '6px' }}
+              onClick={() => setAdapterView('all')}
+              title="Show total combined bandwidth across all adapters (including virtual adapters and loopbacks)"
+            >
+              All Adapters
+            </button>
           </div>
-          <button 
-            className={`panic-btn ${statusData.panicActive ? 'active' : ''}`} 
-            onClick={togglePanicSwitch}
-          >
-            {statusData.panicActive ? (
-              <>
-                <AlertTriangle size={16} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
-                Global Panic Switch ACTIVE (Network Blocked)
-              </>
-            ) : (
-              <>
-                <Zap size={16} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }} />
-                Global Panic Switch
-              </>
-            )}
-          </button>
+          {/* [FoxWall Enhancement] - End of Network Adapter Filter Toggle Switch */}
+
+          {/* [FoxWall Enhancement] - Guard Status Badge (Active vs. Deactivated) */}
+          <div className="status-badge" style={{
+            borderColor: isGuardActive ? 'var(--success-color)' : 'var(--danger-color)',
+            color: isGuardActive ? 'var(--success-color)' : 'var(--danger-color)',
+            boxShadow: isGuardActive ? '0 0 10px var(--success-glow)' : '0 0 10px var(--danger-glow)',
+            background: isGuardActive ? '#00ffcc1a' : 'rgba(255, 51, 102, 0.1)'
+          }}>
+            <div className="status-dot" style={{
+              backgroundColor: isGuardActive ? 'var(--success-color)' : 'var(--danger-color)',
+              animation: isGuardActive ? '1.5s infinite pulse' : 'none'
+            }}></div>
+            <span id="statusText">{isGuardActive ? 'Active Guard' : 'Guard Deactivated'}</span>
+          </div>
+          {/* [FoxWall Enhancement] - End of Guard Status Badge */}
         </div>
       </header>
 
@@ -274,14 +293,14 @@ export default function App() {
             <div className="stat-card">
               <div className="stat-title">Total Active Sockets</div>
               <div className="stat-value">{socketData.length}</div>
-              <div className="stat-rate in">{formatSpeed(statusData.rxSpeed)} Down</div>
+              <div className="stat-rate in">{formatSpeed(adapterView === 'physical' ? (statusData.rxSpeedPhysical ?? statusData.rxSpeed) : statusData.rxSpeed)} Down</div>
             </div>
             <div className="stat-card">
               <div className="stat-title">Blocked ({getBlockedCardDurationLabel()})</div>
               <div className="stat-value" style={{ color: 'var(--danger-color)' }}>
                 {logData.filter(e => e.Action === 'Blocked' || e.State === 'Blocked').length}
               </div>
-              <div className="stat-rate out">{formatSpeed(statusData.txSpeed)} Up</div>
+              <div className="stat-rate out">{formatSpeed(adapterView === 'physical' ? (statusData.txSpeedPhysical ?? statusData.txSpeed) : statusData.txSpeed)} Up</div>
             </div>
             <div className="stat-card">
               <div className="stat-title">Security State</div>
@@ -330,8 +349,9 @@ export default function App() {
               setCustomTimeEnd={setCustomTimeEnd}
               onApplyCustomRange={fetchCustomHistory}
               onOpenClickModal={(point) => setClickModalData({ isOpen: true, point })}
-              rxSpeed={statusData.rxSpeed}
-              txSpeed={statusData.txSpeed}
+              rxSpeed={adapterView === 'physical' ? (statusData.rxSpeedPhysical ?? statusData.rxSpeed) : statusData.rxSpeed}
+              txSpeed={adapterView === 'physical' ? (statusData.txSpeedPhysical ?? statusData.txSpeed) : statusData.txSpeed}
+              adapterView={adapterView}
             />
           )}
 
