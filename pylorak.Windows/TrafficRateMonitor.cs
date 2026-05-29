@@ -45,6 +45,9 @@ namespace pylorak.Windows
             if (size > buffer.Length)
                 buffer = new byte[size];
 
+            // [FoxWall Enhancement] - HashSet to track duplicate physical/virtual adapters
+            var seenAdapters = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             unsafe
             {
                 fixed (byte* bufferPtr = buffer)
@@ -60,14 +63,45 @@ namespace pylorak.Windows
                         int CStatus = *(int*)(itemPtr + statusOffset);
                         if ((CStatus == PDH_CSTATUS_NEW_DATA) || (CStatus == PDH_CSTATUS_VALID_DATA))
                         {
-                            // [FoxWall Enhancement] - Filter Out Non-Physical/Virtual/VPN Interfaces
-                            if (physicalOnly)
+                            IntPtr namePtr = *(IntPtr*)itemPtr;
+                            if (namePtr != IntPtr.Zero)
                             {
-                                IntPtr namePtr = *(IntPtr*)itemPtr;
-                                if (namePtr != IntPtr.Zero)
+                                string name = System.Runtime.InteropServices.Marshal.PtrToStringUni(namePtr) ?? "";
+                                string lowerName = name.ToLowerInvariant();
+
+                                // [FoxWall Enhancement] - Clean and strip duplicate trailing suffixes (e.g. _2, #2, trailing numbers)
+                                string baseName = lowerName;
+                                int lastSpace = baseName.LastIndexOf(' ');
+                                if (lastSpace > 0)
                                 {
-                                    string name = System.Runtime.InteropServices.Marshal.PtrToStringUni(namePtr) ?? "";
-                                    string lowerName = name.ToLowerInvariant();
+                                    string suffix = baseName.Substring(lastSpace + 1);
+                                    if (suffix.StartsWith("_") || suffix.StartsWith("#") || int.TryParse(suffix, out _))
+                                    {
+                                        baseName = baseName.Substring(0, lastSpace).Trim();
+                                    }
+                                }
+
+                                int lastUnderscore = baseName.LastIndexOf('_');
+                                if (lastUnderscore > 0 && int.TryParse(baseName.Substring(lastUnderscore + 1), out _))
+                                {
+                                    baseName = baseName.Substring(0, lastUnderscore).Trim();
+                                }
+                                int lastHash = baseName.LastIndexOf('#');
+                                if (lastHash > 0 && int.TryParse(baseName.Substring(lastHash + 1), out _))
+                                {
+                                    baseName = baseName.Substring(0, lastHash).Trim();
+                                }
+
+                                // Skip duplicate interfaces tracking the same physical card
+                                if (seenAdapters.Contains(baseName))
+                                {
+                                    continue;
+                                }
+                                seenAdapters.Add(baseName);
+                                // [FoxWall Enhancement] - End of Clean and strip duplicate trailing suffixes
+
+                                if (physicalOnly)
+                                {
                                     if (lowerName.Contains("loopback") ||
                                         lowerName.Contains("pseudo") ||
                                         lowerName.Contains("virtual") ||
@@ -89,7 +123,6 @@ namespace pylorak.Windows
                                     }
                                 }
                             }
-                            // [FoxWall Enhancement] - End of Filter Out Non-Physical/Virtual/VPN Interfaces
 
                             ret += *(long*)(itemPtr + largeValueOffset);
                         }

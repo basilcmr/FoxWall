@@ -171,10 +171,16 @@ namespace pylorak.TinyWall
                     {
                         try
                         {
-                            using var proc = Process.GetProcessById((int)row.ProcessId);
-                            name = proc.MainModule?.ModuleName ?? proc.ProcessName;
+                            // [FoxWall Enhancement] - Use TinyWall Service to query paths of SYSTEM/elevated processes securely
+                            string path = Utils.GetPathOfProcessUseTwService(row.ProcessId, GlobalInstances.Controller);
+                            name = Path.GetFileName(path);
                         }
                         catch
+                        {
+                            name = "System / Services";
+                        }
+
+                        if (string.IsNullOrEmpty(name))
                         {
                             name = "System / Services";
                         }
