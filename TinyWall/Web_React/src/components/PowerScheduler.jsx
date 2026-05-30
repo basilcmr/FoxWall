@@ -339,8 +339,9 @@ export default function PowerScheduler({ showToast }) {
               fontSize: '48px',
               fontFamily: 'monospace',
               fontWeight: 'bold',
-              color: schedulerState.isGraceActive ? 'var(--danger-color)' : activeTheme.color,
-              textShadow: schedulerState.isGraceActive ? '0 0 10px var(--danger-glow)' : `0 0 10px ${activeTheme.glow}`,
+              color: schedulerState.isGraceActive ? 'transparent' : activeTheme.color,
+              WebkitTextStroke: schedulerState.isGraceActive ? '1.5px var(--danger-color)' : 'none',
+              textShadow: schedulerState.isGraceActive ? '0 0 15px var(--danger-glow)' : `0 0 10px ${activeTheme.glow}`,
               margin: '16px 0',
               animation: schedulerState.isGraceActive ? 'pulse 1s infinite' : 'none'
             }}>

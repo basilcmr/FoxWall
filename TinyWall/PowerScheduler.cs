@@ -83,6 +83,7 @@ namespace pylorak.TinyWall
         private int _bandwidthCounterSeconds;
         private int _jellyfinCounterSeconds;
         private bool _jellyfinHadStream;
+        private bool _isChainedTransition;
 
         private PowerScheduler()
         {
@@ -116,6 +117,7 @@ namespace pylorak.TinyWall
                 _bandwidthCounterSeconds = 0;
                 _jellyfinCounterSeconds = 0;
                 _jellyfinHadStream = false;
+                _isChainedTransition = false;
 
                 HasChainTrigger = hasChainTrigger;
                 ChainTrigger = chainTrigger;
@@ -280,14 +282,21 @@ namespace pylorak.TinyWall
                         }
                         else
                         {
-                            // To prevent immediate shutdown if the user just started the watch trigger
-                            // and hasn't loaded Jellyfin on TV yet, we allow configured grace period to start, 
-                            // but if a stream was active and now stopped, we definitely shut down after configured grace period.
-                            _jellyfinCounterSeconds++;
-                            SecondsRemaining = Math.Max(0, GraceSeconds - _jellyfinCounterSeconds);
-                            if (SecondsRemaining <= 0)
+                            // If this was started as part of a chained trigger sequence and there is no active stream,
+                            // or if a stream was active and now stopped, transition immediately!
+                            if (_isChainedTransition || _jellyfinHadStream)
                             {
                                 shouldExecute = true;
+                            }
+                            else
+                            {
+                                // Otherwise, if it was started directly as primary, allow the buffer to start a stream.
+                                _jellyfinCounterSeconds++;
+                                SecondsRemaining = Math.Max(0, GraceSeconds - _jellyfinCounterSeconds);
+                                if (SecondsRemaining <= 0)
+                                {
+                                    shouldExecute = true;
+                                }
                             }
                         }
                         break;
@@ -300,6 +309,7 @@ namespace pylorak.TinyWall
                         // Transition to the chained trigger
                         Trigger = ChainTrigger;
                         HasChainTrigger = false; // Prevent infinite loops
+                        _isChainedTransition = true;
 
                         // Reset dynamic counters
                         _idleCounterSeconds = 0;
