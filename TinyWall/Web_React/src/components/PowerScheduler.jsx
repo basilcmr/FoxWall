@@ -24,6 +24,15 @@ export default function PowerScheduler({ showToast }) {
   const [hours, setHours] = useState(1);
   const [minutes, setMinutes] = useState(0);
   const [exactTime, setExactTime] = useState('23:00');
+  const [exactDate, setExactDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+  const [nextOption, setNextOption] = useState(true);
+  const [now, setNow] = useState(new Date());
   const [idleMinutes, setIdleMinutes] = useState(15);
   const [downloadSpeed, setDownloadSpeed] = useState(100); // in KB/s
   const [jellyfinPort, setJellyfinPort] = useState(8096);
@@ -32,6 +41,12 @@ export default function PowerScheduler({ showToast }) {
   const [cancelPassword, setCancelPassword] = useState('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [cancelError, setCancelError] = useState('');
+
+  // Keep 'now' updated every second for live date/time & duration previews
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Audio Context Ref
   const audioContextRef = useRef(null);
@@ -119,7 +134,7 @@ export default function PowerScheduler({ showToast }) {
         value: value.toString(),
         mode: selectedMode,
         canCancel: allowCancel.toString(),
-        exactTime: selectedTrigger === 'exact' ? getTodayExactTimeISO(exactTime) : ''
+        exactTime: selectedTrigger === 'exact' ? getExactTimeISO(exactTime, exactDate, nextOption) : ''
       });
 
       const res = await fetch(`/api/power/schedule?${params.toString()}`, { method: 'POST' });
@@ -163,14 +178,21 @@ export default function PowerScheduler({ showToast }) {
     }
   };
 
-  const getTodayExactTimeISO = (timeStr) => {
-    const [h, m] = timeStr.split(':');
+  const getExactTimeISO = (timeStr, dateStr, useNext) => {
+    const [h, m] = timeStr.split(':').map(Number);
     const d = new Date();
-    d.setHours(parseInt(h));
-    d.setMinutes(parseInt(m));
-    d.setSeconds(0);
-    d.setMilliseconds(0);
-    return d.toISOString();
+    if (useNext) {
+      d.setHours(h, m, 0, 0);
+      if (d <= new Date()) {
+        d.setDate(d.getDate() + 1);
+      }
+      return d.toISOString();
+    } else {
+      const [yr, mo, dy] = dateStr.split('-').map(Number);
+      d.setFullYear(yr, mo - 1, dy);
+      d.setHours(h, m, 0, 0);
+      return d.toISOString();
+    }
   };
 
   const formatSeconds = (totalSec) => {
@@ -431,57 +453,140 @@ export default function PowerScheduler({ showToast }) {
               padding: '20px',
               marginBottom: '24px'
             }}>
-              {selectedTrigger === 'duration' && (
-                <div>
-                  <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Hours</label>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="12" 
-                        value={hours} 
-                        onChange={(e) => setHours(parseInt(e.target.value))}
-                        style={{ width: '100%', accentColor: currentActionTheme.color }}
-                      />
-                      <div style={{ textAlign: 'center', fontWeight: 'bold', marginTop: '6px' }}>{hours} hrs</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Minutes</label>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="59" 
-                        value={minutes} 
-                        onChange={(e) => setMinutes(parseInt(e.target.value))}
-                        style={{ width: '100%', accentColor: currentActionTheme.color }}
-                      />
-                      <div style={{ textAlign: 'center', fontWeight: 'bold', marginTop: '6px' }}>{minutes} mins</div>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                    PC will {selectedAction} in <strong>{hours > 0 ? `${hours} hours and ` : ''}{minutes} minutes</strong>
-                  </div>
-                </div>
-              )}
+              {selectedTrigger === 'duration' && (() => {
+                const totalSeconds = (hours * 3600) + (minutes * 60);
+                const targetD = new Date(now.getTime() + totalSeconds * 1000);
+                const formattedTimeStr = targetD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const formattedDateStr = targetD.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
-              {selectedTrigger === 'exact' && (
-                <div>
-                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                    Set Exact Execution Time (Local System Timezone)
-                  </label>
-                  <input 
-                    type="time" 
-                    className="search-input" 
-                    style={{ fontSize: '18px', padding: '10px', width: '150px', display: 'block', margin: '0 auto', textAlign: 'center' }}
-                    value={exactTime}
-                    onChange={(e) => setExactTime(e.target.value)}
-                  />
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '10px' }}>
-                    PC will {selectedAction} today/tomorrow at exactly <strong>{exactTime}</strong>
+                return (
+                  <div>
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Hours</label>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="12" 
+                          value={hours} 
+                          onChange={(e) => setHours(parseInt(e.target.value))}
+                          style={{ width: '100%', accentColor: currentActionTheme.color }}
+                        />
+                        <div style={{ textAlign: 'center', fontWeight: 'bold', marginTop: '6px' }}>{hours} hrs</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Minutes</label>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="59" 
+                          value={minutes} 
+                          onChange={(e) => setMinutes(parseInt(e.target.value))}
+                          style={{ width: '100%', accentColor: currentActionTheme.color }}
+                        />
+                        <div style={{ textAlign: 'center', fontWeight: 'bold', marginTop: '6px' }}>{minutes} mins</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: '1.5' }}>
+                      PC will {selectedAction} in <strong>{hours > 0 ? `${hours} hours and ` : ''}{minutes} minutes</strong><br />
+                      at exactly <strong style={{ color: 'white' }}>{formattedTimeStr}</strong> on <strong style={{ color: 'white' }}>{formattedDateStr}</strong>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
+
+              {selectedTrigger === 'exact' && (() => {
+                const [h, m] = exactTime.split(':').map(Number);
+                let targetD = new Date(now);
+                targetD.setHours(h, m, 0, 0);
+
+                if (nextOption) {
+                  if (targetD <= now) {
+                    targetD.setDate(targetD.getDate() + 1);
+                  }
+                } else {
+                  const [yr, mo, dy] = exactDate.split('-').map(Number);
+                  targetD = new Date(yr, mo - 1, dy, h, m, 0, 0);
+                }
+
+                const diffMs = targetD - now;
+                const isPast = diffMs < 0;
+                
+                let durationLeftStr = '';
+                if (!isPast) {
+                  const totalSec = Math.floor(diffMs / 1000);
+                  const hrs = Math.floor(totalSec / 3600);
+                  const mins = Math.floor((totalSec % 3600) / 60);
+                  const secs = totalSec % 60;
+                  const parts = [];
+                  if (hrs > 0) parts.push(`${hrs} hr${hrs > 1 ? 's' : ''}`);
+                  if (mins > 0) parts.push(`${mins} min${mins > 1 ? 's' : ''}`);
+                  parts.push(`${secs} sec${secs > 1 ? 's' : ''}`);
+                  durationLeftStr = parts.join(', ');
+                }
+
+                const formattedTimeStr = targetD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const formattedDateStr = targetD.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+                return (
+                  <div>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textAlign: 'center' }}>
+                      Set Exact Execution Time (Local System Timezone)
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Time</span>
+                          <input 
+                            type="time" 
+                            className="search-input" 
+                            style={{ fontSize: '16px', padding: '8px 12px', width: '130px', textAlign: 'center' }}
+                            value={exactTime}
+                            onChange={(e) => setExactTime(e.target.value)}
+                          />
+                        </div>
+                        
+                        {!nextOption && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Date</span>
+                            <input 
+                              type="date" 
+                              className="search-input" 
+                              style={{ fontSize: '16px', padding: '8px 12px', width: '160px', textAlign: 'center' }}
+                              value={exactDate}
+                              onChange={(e) => setExactDate(e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <input 
+                          type="checkbox" 
+                          id="nextOption"
+                          style={{ width: '15px', height: '15px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+                          checked={nextOption}
+                          onChange={(e) => setNextOption(e.target.checked)}
+                        />
+                        <label htmlFor="nextOption" style={{ fontSize: '11px', cursor: 'pointer', userSelect: 'none', color: 'var(--text-secondary)' }}>
+                          Next Occurrence (Auto Today/Tomorrow)
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: isPast ? 'var(--danger-color)' : 'var(--text-secondary)', textAlign: 'center', marginTop: '16px', lineHeight: '1.5' }}>
+                      {isPast ? (
+                        <strong>⚠️ Selected execution time is in the past!</strong>
+                      ) : (
+                        <span>
+                          PC will {selectedAction} in <strong style={{ color: currentActionTheme.color }}>{durationLeftStr}</strong><br />
+                          at exactly <strong style={{ color: 'white' }}>{formattedTimeStr}</strong> on <strong style={{ color: 'white' }}>{formattedDateStr}</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {selectedTrigger === 'idle' && (
                 <div>
