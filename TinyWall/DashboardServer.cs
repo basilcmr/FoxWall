@@ -409,6 +409,16 @@ namespace pylorak.TinyWall
                                 break;
                             }
 
+                            if (triggerStr.Equals("exact", StringComparison.OrdinalIgnoreCase))
+                            {
+                                triggerStr = "ExactTime";
+                            }
+
+                            if (chainTriggerStr != null && chainTriggerStr.Equals("exact", StringComparison.OrdinalIgnoreCase))
+                            {
+                                chainTriggerStr = "ExactTime";
+                            }
+
                             PowerAction action = (PowerAction)Enum.Parse(typeof(PowerAction), actionStr, true);
                             TriggerType trigger = (TriggerType)Enum.Parse(typeof(TriggerType), triggerStr, true);
 

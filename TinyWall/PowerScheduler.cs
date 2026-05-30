@@ -62,6 +62,7 @@ namespace pylorak.TinyWall
         public bool CanCancel { get; private set; }
         public DateTime TargetTime { get; private set; }
         public int SecondsRemaining { get; private set; }
+        public bool IsGraceActive { get; private set; }
         
         // Settings / Thresholds
         public int IdleThresholdMinutes { get; private set; }
@@ -110,6 +111,7 @@ namespace pylorak.TinyWall
                 Mode = mode;
                 CanCancel = canCancel;
                 GraceSeconds = graceSeconds;
+                IsGraceActive = false;
                 _idleCounterSeconds = 0;
                 _bandwidthCounterSeconds = 0;
                 _jellyfinCounterSeconds = 0;
@@ -158,8 +160,8 @@ namespace pylorak.TinyWall
                         break;
 
                     case TriggerType.Jellyfin:
-                        SecondsRemaining = 300; // Require 5 minutes of no streams
-                        TargetTime = now.AddMinutes(5);
+                        SecondsRemaining = GraceSeconds; // Require GraceSeconds of no streams
+                        TargetTime = now.AddSeconds(GraceSeconds);
                         break;
                 }
 
@@ -178,6 +180,7 @@ namespace pylorak.TinyWall
                 }
 
                 IsActive = false;
+                IsGraceActive = false;
                 if (_pollTimer != null)
                 {
                     _pollTimer.Dispose();
@@ -192,25 +195,37 @@ namespace pylorak.TinyWall
             {
                 if (!IsActive) return;
 
+                if (IsGraceActive)
+                {
+                    if (IsJellyfinStreamingActive())
+                    {
+                        TargetTime = TargetTime.AddSeconds(1);
+                    }
+                    else
+                    {
+                        SecondsRemaining--;
+                        if (SecondsRemaining <= 0)
+                        {
+                            IsActive = false;
+                            _pollTimer?.Dispose();
+                            _pollTimer = null;
+                            IsGraceActive = false;
+                            ExecutePowerAction();
+                        }
+                    }
+                    return;
+                }
+
                 bool shouldExecute = false;
 
                 switch (Trigger)
                 {
                     case TriggerType.Duration:
                     case TriggerType.ExactTime:
-                        // Jellyfin stream check to pause timer:
-                        if (IsJellyfinStreamingActive())
+                        SecondsRemaining--;
+                        if (SecondsRemaining <= 0)
                         {
-                            // Postpone target time by 1 second to hold countdown
-                            TargetTime = TargetTime.AddSeconds(1);
-                        }
-                        else
-                        {
-                            SecondsRemaining--;
-                            if (SecondsRemaining <= 0)
-                            {
-                                shouldExecute = true;
-                            }
+                            shouldExecute = true;
                         }
                         break;
 
@@ -261,15 +276,15 @@ namespace pylorak.TinyWall
                         {
                             _jellyfinHadStream = true;
                             _jellyfinCounterSeconds = 0;
-                            SecondsRemaining = 300; // Reset countdown
+                            SecondsRemaining = GraceSeconds; // Reset countdown
                         }
                         else
                         {
                             // To prevent immediate shutdown if the user just started the watch trigger
-                            // and hasn't loaded Jellyfin on TV yet, we allow 5 minutes to start, 
-                            // but if a stream was active and now stopped, we definitely shut down after 5 minutes.
+                            // and hasn't loaded Jellyfin on TV yet, we allow configured grace period to start, 
+                            // but if a stream was active and now stopped, we definitely shut down after configured grace period.
                             _jellyfinCounterSeconds++;
-                            SecondsRemaining = Math.Max(0, 300 - _jellyfinCounterSeconds);
+                            SecondsRemaining = Math.Max(0, GraceSeconds - _jellyfinCounterSeconds);
                             if (SecondsRemaining <= 0)
                             {
                                 shouldExecute = true;
@@ -319,7 +334,7 @@ namespace pylorak.TinyWall
                                 break;
 
                             case TriggerType.Idle:
-                                IdleThresholdMinutes = ChainValue;
+                            IdleThresholdMinutes = ChainValue;
                                 SecondsRemaining = ChainValue * 60;
                                 TargetTime = now.AddMinutes(ChainValue);
                                 break;
@@ -331,16 +346,24 @@ namespace pylorak.TinyWall
                                 break;
 
                             case TriggerType.Jellyfin:
-                                SecondsRemaining = 300;
-                                TargetTime = now.AddMinutes(5);
+                                SecondsRemaining = GraceSeconds;
+                                TargetTime = now.AddSeconds(GraceSeconds);
                                 break;
                         }
+                    }
+                    else if (Mode == ExecutionMode.Smart && !IsGraceActive)
+                    {
+                        // Transition to Grace Period Countdown
+                        IsGraceActive = true;
+                        SecondsRemaining = GraceSeconds;
+                        TargetTime = DateTime.Now.AddSeconds(GraceSeconds);
                     }
                     else
                     {
                         IsActive = false;
                         _pollTimer?.Dispose();
                         _pollTimer = null;
+                        IsGraceActive = false;
                         ExecutePowerAction();
                     }
                 }
@@ -358,20 +381,7 @@ namespace pylorak.TinyWall
                         break;
 
                     case PowerAction.Sleep:
-                        if (Mode == ExecutionMode.Smart)
-                        {
-                            // Smart Sleep: Wait customized grace period, then sleep
-                            int delayMs = GraceSeconds * 1000;
-                            ThreadPool.QueueUserWorkItem((s) =>
-                            {
-                                Thread.Sleep(delayMs);
-                                Application.SetSuspendState(PowerState.Suspend, true, true);
-                            });
-                        }
-                        else
-                        {
-                            Application.SetSuspendState(PowerState.Suspend, true, true);
-                        }
+                        Application.SetSuspendState(PowerState.Suspend, true, true);
                         break;
 
                     case PowerAction.Shutdown:
@@ -379,8 +389,8 @@ namespace pylorak.TinyWall
                         {
                             ExecutionMode.Force => "/s /t 0 /f",
                             ExecutionMode.Graceful => "/s /t 0",
-                            ExecutionMode.Smart => $"/s /t {GraceSeconds} /f", // Waits grace period, then forces shutdown
-                            _ => $"/s /t {GraceSeconds} /f"
+                            ExecutionMode.Smart => "/s /t 0 /f", // We already counted down in-app
+                            _ => "/s /t 0 /f"
                         };
                         Process.Start("shutdown.exe", shutdownArgs);
                         break;
@@ -390,8 +400,8 @@ namespace pylorak.TinyWall
                         {
                             ExecutionMode.Force => "/r /t 0 /f",
                             ExecutionMode.Graceful => "/r /t 0",
-                            ExecutionMode.Smart => $"/r /t {GraceSeconds} /f", // Waits grace period, then forces restart
-                            _ => $"/r /t {GraceSeconds} /f"
+                            ExecutionMode.Smart => "/r /t 0 /f", // We already counted down in-app
+                            _ => "/r /t 0 /f"
                         };
                         Process.Start("shutdown.exe", restartArgs);
                         break;
@@ -476,7 +486,8 @@ namespace pylorak.TinyWall
                     hasChainTrigger = HasChainTrigger,
                     chainTrigger = ChainTrigger.ToString().ToLowerInvariant(),
                     chainValue = ChainValue,
-                    chainExactTime = ChainExactTimeStr
+                    chainExactTime = ChainExactTimeStr,
+                    graceSeconds = GraceSeconds
                 };
             }
         }

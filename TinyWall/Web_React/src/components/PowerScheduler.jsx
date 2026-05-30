@@ -37,6 +37,7 @@ export default function PowerScheduler({ showToast }) {
   const [downloadSpeed, setDownloadSpeed] = useState(100); // in KB/s
   const [jellyfinPort, setJellyfinPort] = useState(8096);
   const [graceMinutes, setGraceMinutes] = useState(5);
+  const [graceSeconds, setGraceSeconds] = useState(0);
 
   // Chained / Combined Trigger States
   const [chainActive, setChainActive] = useState(false);
@@ -154,7 +155,7 @@ export default function PowerScheduler({ showToast }) {
         mode: selectedMode,
         canCancel: allowCancel.toString(),
         exactTime: selectedTrigger === 'exact' ? getExactTimeISO(exactTime, exactDate, nextOption) : '',
-        graceSeconds: (graceMinutes * 60).toString()
+        graceSeconds: ((graceMinutes * 60) + graceSeconds).toString()
       });
 
       if (chainActive) {
@@ -265,7 +266,7 @@ export default function PowerScheduler({ showToast }) {
   const currentActionTheme = getActionTheme(selectedAction);
 
   // Check if countdown warning is active
-  const isWarningActive = schedulerState.isActive && schedulerState.secondsRemaining <= 60;
+  const isWarningActive = (schedulerState.isActive && schedulerState.secondsRemaining <= 60) || schedulerState.isGraceActive;
 
   return (
     <div className="panel" style={{ padding: '0' }}>
@@ -310,24 +311,40 @@ export default function PowerScheduler({ showToast }) {
               <Power size={32} />
             </div>
 
-            <h2 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '8px', textTransform: 'capitalize' }}>
-              Scheduled {schedulerState.action} Active
-            </h2>
+            <h2 style={{ 
+               fontSize: '22px', 
+               fontWeight: 'bold', 
+               marginBottom: '8px', 
+               textTransform: 'capitalize',
+               color: schedulerState.isGraceActive ? 'var(--danger-color)' : 'white',
+               animation: schedulerState.isGraceActive ? 'blinker 1s linear infinite' : 'none'
+             }}>
+               {schedulerState.isGraceActive ? `⚠️ SMART HYBRID GRACE PERIOD ACTIVE` : `Scheduled ${schedulerState.action} Active`}
+             </h2>
 
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
-              Trigger Type: <strong style={{ textTransform: 'capitalize', color: 'white' }}>{schedulerState.triggerType === 'jellyfin' ? 'Jellyfin Stream Tracker' : schedulerState.triggerType}</strong> | Policy: <strong style={{ textTransform: 'capitalize', color: 'white' }}>{schedulerState.mode === 'smart' ? 'Smart Hybrid (5m grace)' : schedulerState.mode}</strong>
-            </p>
+             <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
+               {schedulerState.isGraceActive ? (
+                 <span style={{ color: 'var(--danger-color)', fontWeight: 'bold' }}>
+                   Please save all your open files. The system will force {schedulerState.action} when the grace countdown finishes!
+                 </span>
+               ) : (
+                 <>
+                   Trigger Type: <strong style={{ textTransform: 'capitalize', color: 'white' }}>{schedulerState.triggerType === 'jellyfin' ? 'Jellyfin Stream Tracker' : schedulerState.triggerType}</strong> | Policy: <strong style={{ textTransform: 'capitalize', color: 'white' }}>{schedulerState.mode === 'smart' ? `Smart Hybrid (${schedulerState.graceSeconds ? formatSeconds(schedulerState.graceSeconds) : '5m'} Grace)` : schedulerState.mode}</strong>
+                 </>
+               )}
+             </p>
 
             {/* Countdown / Value Render */}
             <div style={{
               fontSize: '48px',
               fontFamily: 'monospace',
               fontWeight: 'bold',
-              color: activeTheme.color,
-              textShadow: `0 0 10px ${activeTheme.glow}`,
-              margin: '16px 0'
+              color: schedulerState.isGraceActive ? 'var(--danger-color)' : activeTheme.color,
+              textShadow: schedulerState.isGraceActive ? '0 0 10px var(--danger-glow)' : `0 0 10px ${activeTheme.glow}`,
+              margin: '16px 0',
+              animation: schedulerState.isGraceActive ? 'pulse 1s infinite' : 'none'
             }}>
-              {schedulerState.triggerType === 'jellyfin' && !schedulerState.jellyfinStreaming && schedulerState.secondsRemaining === 300 ? (
+              {schedulerState.triggerType === 'jellyfin' && !schedulerState.jellyfinStreaming && schedulerState.secondsRemaining === (schedulerState.graceSeconds || 300) ? (
                 <div style={{ fontSize: '20px', color: 'var(--text-secondary)' }}>Waiting for first Jellyfin connection...</div>
               ) : schedulerState.jellyfinStreaming ? (
                 <div style={{ fontSize: '22px', color: '#00ffcc', animation: 'pulse 1.5s infinite' }}>
@@ -705,7 +722,7 @@ export default function PowerScheduler({ showToast }) {
                     📺 Streaming Auto-Hold Guard Active
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '6px' }}>
-                    The PC will monitor streaming activity on port {jellyfinPort} and will automatically {selectedAction} <strong>exactly 5 minutes after</strong> all streaming devices disconnect!
+                    The PC will monitor streaming activity on port {jellyfinPort} and will automatically {selectedAction} <strong>exactly {graceMinutes > 0 ? `${graceMinutes}m ` : ''}{graceSeconds > 0 ? `${graceSeconds}s ` : ''}after</strong> all streaming devices disconnect!
                   </div>
                 </div>
               )}
@@ -949,41 +966,78 @@ export default function PowerScheduler({ showToast }) {
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
-                    { id: 'smart', label: `Smart Hybrid (Graceful ${graceMinutes}m, then Force)`, desc: `Allows ${graceMinutes} mins to save before force close (Recommended)` },
+                    { id: 'smart', label: `Smart Hybrid (Graceful ${graceMinutes}m ${graceSeconds}s, then Force)`, desc: `Allows ${graceMinutes}m ${graceSeconds}s to save before force close (Recommended)` },
                     { id: 'graceful', label: 'Graceful Prompt', desc: 'Prompts to save open files, lets apps block shutdown' },
                     { id: 'force', label: 'Force Close Immediately', desc: 'Instantly terminates all applications and actions' }
-                  ].map((pol) => (
-                    <div 
-                      key={pol.id}
-                      onClick={() => setSelectedMode(pol.id)}
-                      style={{
-                        background: selectedMode === pol.id ? 'var(--surface-color)' : 'transparent',
-                        border: `1px solid ${selectedMode === pol.id ? 'var(--accent-color)' : 'var(--border-color)'}`,
-                        borderRadius: '6px',
-                        padding: '12px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ fontWeight: 'bold', fontSize: '12px', color: selectedMode === pol.id ? 'white' : 'var(--text-secondary)' }}>{pol.label}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{pol.desc}</div>
-                    </div>
-                  ))}
-                  {selectedMode === 'smart' && (
-                    <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '6px', padding: '12px' }}>
-                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                        Smart Grace Delay: <strong>{graceMinutes} minutes</strong>
-                      </label>
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max="60" 
-                        value={graceMinutes} 
-                        onChange={(e) => setGraceMinutes(parseInt(e.target.value))}
-                        style={{ width: '100%', accentColor: currentActionTheme.color }}
-                      />
-                    </div>
-                  )}
+                  ].map((pol) => {
+                    const isSel = selectedMode === pol.id;
+                    return (
+                      <div 
+                        key={pol.id}
+                        onClick={() => setSelectedMode(pol.id)}
+                        style={{
+                          background: isSel ? 'var(--surface-color)' : 'transparent',
+                          border: `1px solid ${isSel ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                          borderRadius: '6px',
+                          padding: '12px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ fontWeight: 'bold', fontSize: '12px', color: isSel ? 'white' : 'var(--text-secondary)' }}>{pol.label}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{pol.desc}</div>
+                        
+                        {pol.id === 'smart' && isSel && (
+                          <div 
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ 
+                              marginTop: '10px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '12px',
+                              background: 'rgba(255,255,255,0.02)',
+                              border: '1px solid rgba(255,255,255,0.04)',
+                              padding: '8px 12px',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Grace Period:</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <input 
+                                type="number"
+                                min="0"
+                                max="180"
+                                value={graceMinutes}
+                                onChange={(e) => {
+                                  const val = Math.max(0, parseInt(e.target.value) || 0);
+                                  setGraceMinutes(val);
+                                }}
+                                className="search-input"
+                                style={{ width: '50px', padding: '4px 6px', fontSize: '12px', textAlign: 'center', margin: 0 }}
+                              />
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>m</span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <input 
+                                type="number"
+                                min="0"
+                                max="59"
+                                value={graceSeconds}
+                                onChange={(e) => {
+                                  const val = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                                  setGraceSeconds(val);
+                                }}
+                                className="search-input"
+                                style={{ width: '50px', padding: '4px 6px', fontSize: '12px', textAlign: 'center', margin: 0 }}
+                              />
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>s</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
