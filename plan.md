@@ -19,6 +19,7 @@ This document outlines the detailed technical design, architectural changes, and
 - `[ ]` **14. Parent-Process Security Guard (Anti-Exploit Blocker)** (Pending - *Difficulty: Very High / Extremely High*)
 - `[x]` **15. FoxWall Security Monitor Dashboard** (Completed in v1.2.0 - *Difficulty: Extremely High*)
 - `[ ]` **16. Full Web-Based Settings & Rules UI Migration** (Pending - *Difficulty: High*)
+- `[x]` **17. Scheduled PC Power Manager (Shutdown/Restart/Sleep/Lock)** (Completed in v1.2.5 - *Difficulty: Medium-High*)
 
 ---
 
@@ -464,4 +465,23 @@ To make firewall modes dynamic instead of hardcoded in a static C# `enum`:
 #### 3. Legacy UI Deprecation
 - Ditch native WinForms controls and windows entirely, except for the tiny system tray notifications and context hooks.
 - Offloading GUI rendering entirely to the browser prevents main thread blocks, resolves high-DPI scaling issues natively, and supports unlimited custom styling and animations with zero CPU overhead for C# code.
+
+---
+
+## 17. Scheduled PC Power Manager (Shutdown/Restart/Sleep/Lock) [COMPLETED]
+**Difficulty:** Medium-High
+**Goal:** Empower users to automate PC power operations (Shutdown, Restart, Sleep, and Lock) through time-based durations, exact daily times, system idle checks, network bandwidth checks, or media streaming activity (Jellyfin streams).
+
+### Architectural Changes & Technical Design
+1. **Thread-Safe Core Scheduling Engine (`PowerScheduler.cs`):**
+   - Keeps track of running countdowns, target date-times, trigger types, and execution modes.
+   - Monitors user idle time via native Win32 `GetLastInputInfo` inside a background polling thread.
+   - Audits inbound Jellyfin network traffic on default streaming ports (`8096` / `8920`) to hold/suspend power countdowns automatically while actively playing movies/tv shows.
+2. **REST API Endpoint Registration (`DashboardServer.cs`):**
+   - Exposes clean local endpoints (`/api/power/status`, `/api/power/schedule`, `/api/power/cancel`) running securely on loopback interfaces.
+   - Verifies admin passwords before allowing cancellation if settings are locked.
+3. **Smart Hybrid Delay Execution:**
+   - Pre-configures a default transition sequence waiting exactly 5 minutes gracefully to let background processes close and save files, followed by an immediate forced power-off command.
+4. **Premium React View (`PowerScheduler.jsx`):**
+   - Designed with beautiful visual cards, customized dual sliders, password checks, final 60-second flashing warning alert bars, and chime sounds.
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, Activity, TrendingUp, LineChart, Zap, AlertTriangle } from 'lucide-react';
+import { Shield, ShieldAlert, Activity, TrendingUp, LineChart, Zap, AlertTriangle, Power } from 'lucide-react';
 import SocketsFeed from './components/SocketsFeed';
 import BandwidthChart from './components/BandwidthChart';
 import FirewallLogs from './components/FirewallLogs';
 import ProcessAnalytics from './components/ProcessAnalytics';
+import PowerScheduler from './components/PowerScheduler';
 import { CopyOptionsModal, SearchOptionsModal, ChartClickDetailModal } from './components/Modals';
 
 export default function App() {
@@ -283,6 +284,12 @@ export default function App() {
             <LineChart className="nav-icon" />
             <span>Process Analytics</span>
           </div>
+          {/* [FoxWall Enhancement] - Start of Power Scheduler Tab */}
+          <div className={`nav-item ${activeTab === 'power-scheduler' ? 'active' : ''}`} onClick={() => setActiveTab('power-scheduler')}>
+            <Power className="nav-icon" />
+            <span>Power Scheduler</span>
+          </div>
+          {/* [FoxWall Enhancement] - End of Power Scheduler Tab */}
         </div>
 
         {/* Workspace */}
@@ -376,6 +383,12 @@ export default function App() {
               formatSpeed={formatSpeed}
             />
           )}
+
+          {/* [FoxWall Enhancement] - Start of Power Scheduler Component */}
+          {activeTab === 'power-scheduler' && (
+            <PowerScheduler showToast={showToast} />
+          )}
+          {/* [FoxWall Enhancement] - End of Power Scheduler Component */}
 
         </div>
       </div>

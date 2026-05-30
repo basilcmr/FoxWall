@@ -378,6 +378,107 @@ namespace pylorak.TinyWall
                     }
                     break;
 
+
+                // [FoxWall Enhancement] - Start of PC Power Manager API Endpoints
+                case "/api/power/status":
+                    responseData = PowerScheduler.Instance.GetStatus();
+                    break;
+
+                case "/api/power/schedule":
+                    if (request.HttpMethod == "POST")
+                    {
+                        try
+                        {
+                            string? actionStr = request.QueryString["action"];
+                            string? triggerStr = request.QueryString["trigger"];
+                            string? valueStr = request.QueryString["value"];
+                            string? exactTimeStr = request.QueryString["exactTime"];
+                            string? modeStr = request.QueryString["mode"];
+                            string? canCancelStr = request.QueryString["canCancel"];
+
+                            if (string.IsNullOrEmpty(actionStr) || string.IsNullOrEmpty(triggerStr))
+                            {
+                                response.StatusCode = (int)HttpStatusCode.BadRequest;
+                                responseData = new { success = false, error = "Action and trigger are required parameters." };
+                                break;
+                            }
+
+                            PowerAction action = (PowerAction)Enum.Parse(typeof(PowerAction), actionStr, true);
+                            TriggerType trigger = (TriggerType)Enum.Parse(typeof(TriggerType), triggerStr, true);
+
+                            int value = 0;
+                            if (!string.IsNullOrEmpty(valueStr))
+                            {
+                                int.TryParse(valueStr, out value);
+                            }
+
+                            ExecutionMode mode = ExecutionMode.Smart;
+                            if (!string.IsNullOrEmpty(modeStr))
+                            {
+                                Enum.TryParse(modeStr, true, out mode);
+                            }
+
+                            bool canCancel = true;
+                            if (!string.IsNullOrEmpty(canCancelStr))
+                            {
+                                bool.TryParse(canCancelStr, out canCancel);
+                            }
+
+                            PowerScheduler.Instance.StartSchedule(action, trigger, value, exactTimeStr, mode, canCancel);
+                            responseData = new { success = true };
+                        }
+                        catch (Exception ex)
+                        {
+                            responseData = new { success = false, error = ex.Message };
+                        }
+                    }
+                    else
+                    {
+                        response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+                    }
+                    break;
+
+                case "/api/power/cancel":
+                    if (request.HttpMethod == "POST")
+                    {
+                        try
+                        {
+                            string? password = request.QueryString["password"];
+
+                            // If FoxWall settings are currently password locked, enforce verification
+                            if (GlobalInstances.Controller.IsServerLocked)
+                            {
+                                if (string.IsNullOrEmpty(password))
+                                {
+                                    response.StatusCode = (int)HttpStatusCode.Forbidden;
+                                    responseData = new { success = false, error = "Password required to cancel schedule." };
+                                    break;
+                                }
+
+                                if (GlobalInstances.Controller.TryUnlockServer(password) != MessageType.UNLOCK)
+                                {
+                                    response.StatusCode = (int)HttpStatusCode.Forbidden;
+                                    responseData = new { success = false, error = "Incorrect security password." };
+                                    break;
+                                }
+                            }
+
+                            PowerScheduler.Instance.Cancel();
+                            responseData = new { success = true };
+                        }
+                        catch (Exception ex)
+                        {
+                            response.StatusCode = (int)HttpStatusCode.Forbidden;
+                            responseData = new { success = false, error = ex.Message };
+                        }
+                    }
+                    else
+                    {
+                        response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+                    }
+                    break;
+                // [FoxWall Enhancement] - End of PC Power Manager API Endpoints
+
                 default:
                     response.StatusCode = (int)HttpStatusCode.NotFound;
                     break;
