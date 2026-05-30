@@ -68,6 +68,15 @@ namespace pylorak.TinyWall
         public int BandwidthThresholdKbps { get; private set; }
         public int JellyfinCustomPort { get; private set; }
         
+        // Smart Hybrid Grace Period
+        public int GraceSeconds { get; private set; } = 300;
+
+        // Chain Schedule properties
+        public bool HasChainTrigger { get; private set; }
+        public TriggerType ChainTrigger { get; private set; }
+        public int ChainValue { get; private set; }
+        public string? ChainExactTimeStr { get; private set; }
+
         // Dynamic counters for smart triggers
         private int _idleCounterSeconds;
         private int _bandwidthCounterSeconds;
@@ -85,7 +94,12 @@ namespace pylorak.TinyWall
             int value, // Value depends on trigger: seconds for countdown, minutes for idle, kbps for download, seconds for jellyfin
             string? exactTimeStr = null, // Used for ExactTime trigger
             ExecutionMode mode = ExecutionMode.Smart,
-            bool canCancel = true)
+            bool canCancel = true,
+            bool hasChainTrigger = false,
+            TriggerType chainTrigger = TriggerType.Duration,
+            int chainValue = 0,
+            string? chainExactTimeStr = null,
+            int graceSeconds = 300)
         {
             lock (_lock)
             {
@@ -95,10 +109,16 @@ namespace pylorak.TinyWall
                 Trigger = trigger;
                 Mode = mode;
                 CanCancel = canCancel;
+                GraceSeconds = graceSeconds;
                 _idleCounterSeconds = 0;
                 _bandwidthCounterSeconds = 0;
                 _jellyfinCounterSeconds = 0;
                 _jellyfinHadStream = false;
+
+                HasChainTrigger = hasChainTrigger;
+                ChainTrigger = chainTrigger;
+                ChainValue = chainValue;
+                ChainExactTimeStr = chainExactTimeStr;
 
                 DateTime now = DateTime.Now;
 
@@ -260,10 +280,69 @@ namespace pylorak.TinyWall
 
                 if (shouldExecute)
                 {
-                    IsActive = false;
-                    _pollTimer?.Dispose();
-                    _pollTimer = null;
-                    ExecutePowerAction();
+                    if (HasChainTrigger)
+                    {
+                        // Transition to the chained trigger
+                        Trigger = ChainTrigger;
+                        HasChainTrigger = false; // Prevent infinite loops
+
+                        // Reset dynamic counters
+                        _idleCounterSeconds = 0;
+                        _bandwidthCounterSeconds = 0;
+                        _jellyfinCounterSeconds = 0;
+                        _jellyfinHadStream = false;
+
+                        DateTime now = DateTime.Now;
+
+                        switch (Trigger)
+                        {
+                            case TriggerType.Duration:
+                                SecondsRemaining = ChainValue;
+                                TargetTime = now.AddSeconds(ChainValue);
+                                break;
+
+                            case TriggerType.ExactTime:
+                                if (DateTime.TryParse(ChainExactTimeStr, out DateTime parsed))
+                                {
+                                    TargetTime = parsed;
+                                    if (TargetTime <= now)
+                                    {
+                                        TargetTime = TargetTime.AddDays(1);
+                                    }
+                                    SecondsRemaining = (int)(TargetTime - now).TotalSeconds;
+                                }
+                                else
+                                {
+                                    SecondsRemaining = 300;
+                                    TargetTime = now.AddMinutes(5);
+                                }
+                                break;
+
+                            case TriggerType.Idle:
+                                IdleThresholdMinutes = ChainValue;
+                                SecondsRemaining = ChainValue * 60;
+                                TargetTime = now.AddMinutes(ChainValue);
+                                break;
+
+                            case TriggerType.Download:
+                                BandwidthThresholdKbps = ChainValue;
+                                SecondsRemaining = 180;
+                                TargetTime = now.AddMinutes(3);
+                                break;
+
+                            case TriggerType.Jellyfin:
+                                SecondsRemaining = 300;
+                                TargetTime = now.AddMinutes(5);
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        IsActive = false;
+                        _pollTimer?.Dispose();
+                        _pollTimer = null;
+                        ExecutePowerAction();
+                    }
                 }
             }
         }
@@ -281,10 +360,11 @@ namespace pylorak.TinyWall
                     case PowerAction.Sleep:
                         if (Mode == ExecutionMode.Smart)
                         {
-                            // Smart Sleep: Wait 5 minutes, then sleep
+                            // Smart Sleep: Wait customized grace period, then sleep
+                            int delayMs = GraceSeconds * 1000;
                             ThreadPool.QueueUserWorkItem((s) =>
                             {
-                                Thread.Sleep(300000);
+                                Thread.Sleep(delayMs);
                                 Application.SetSuspendState(PowerState.Suspend, true, true);
                             });
                         }
@@ -299,8 +379,8 @@ namespace pylorak.TinyWall
                         {
                             ExecutionMode.Force => "/s /t 0 /f",
                             ExecutionMode.Graceful => "/s /t 0",
-                            ExecutionMode.Smart => "/s /t 300 /f", // Waits 5 minutes, then forces shutdown
-                            _ => "/s /t 300 /f"
+                            ExecutionMode.Smart => $"/s /t {GraceSeconds} /f", // Waits grace period, then forces shutdown
+                            _ => $"/s /t {GraceSeconds} /f"
                         };
                         Process.Start("shutdown.exe", shutdownArgs);
                         break;
@@ -310,8 +390,8 @@ namespace pylorak.TinyWall
                         {
                             ExecutionMode.Force => "/r /t 0 /f",
                             ExecutionMode.Graceful => "/r /t 0",
-                            ExecutionMode.Smart => "/r /t 300 /f", // Waits 5 minutes, then forces restart
-                            _ => "/r /t 300 /f"
+                            ExecutionMode.Smart => $"/r /t {GraceSeconds} /f", // Waits grace period, then forces restart
+                            _ => $"/r /t {GraceSeconds} /f"
                         };
                         Process.Start("shutdown.exe", restartArgs);
                         break;
@@ -392,7 +472,11 @@ namespace pylorak.TinyWall
                     targetTime = TargetTime.ToString("yyyy-MM-dd HH:mm:ss"),
                     secondsRemaining = SecondsRemaining,
                     requiresPassword = requiresPassword,
-                    jellyfinStreaming = IsJellyfinStreamingActive()
+                    jellyfinStreaming = IsJellyfinStreamingActive(),
+                    hasChainTrigger = HasChainTrigger,
+                    chainTrigger = ChainTrigger.ToString().ToLowerInvariant(),
+                    chainValue = ChainValue,
+                    chainExactTime = ChainExactTimeStr
                 };
             }
         }

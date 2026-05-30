@@ -396,6 +396,12 @@ namespace pylorak.TinyWall
                             string? modeStr = request.QueryString["mode"];
                             string? canCancelStr = request.QueryString["canCancel"];
 
+                            // Chained trigger parameters
+                            string? chainTriggerStr = request.QueryString["chainTrigger"];
+                            string? chainValueStr = request.QueryString["chainValue"];
+                            string? chainExactTimeStr = request.QueryString["chainExactTime"];
+                            string? graceSecondsStr = request.QueryString["graceSeconds"];
+
                             if (string.IsNullOrEmpty(actionStr) || string.IsNullOrEmpty(triggerStr))
                             {
                                 response.StatusCode = (int)HttpStatusCode.BadRequest;
@@ -424,7 +430,39 @@ namespace pylorak.TinyWall
                                 bool.TryParse(canCancelStr, out canCancel);
                             }
 
-                            PowerScheduler.Instance.StartSchedule(action, trigger, value, exactTimeStr, mode, canCancel);
+                            int graceSeconds = 300;
+                            if (!string.IsNullOrEmpty(graceSecondsStr))
+                            {
+                                int.TryParse(graceSecondsStr, out graceSeconds);
+                            }
+
+                            bool hasChainTrigger = false;
+                            TriggerType chainTrigger = TriggerType.Duration;
+                            int chainValue = 0;
+
+                            if (!string.IsNullOrEmpty(chainTriggerStr))
+                            {
+                                hasChainTrigger = true;
+                                Enum.TryParse(chainTriggerStr, true, out chainTrigger);
+                                if (!string.IsNullOrEmpty(chainValueStr))
+                                {
+                                    int.TryParse(chainValueStr, out chainValue);
+                                }
+                            }
+
+                            PowerScheduler.Instance.StartSchedule(
+                                action, 
+                                trigger, 
+                                value, 
+                                exactTimeStr, 
+                                mode, 
+                                canCancel, 
+                                hasChainTrigger, 
+                                chainTrigger, 
+                                chainValue, 
+                                chainExactTimeStr,
+                                graceSeconds
+                            );
                             responseData = new { success = true };
                         }
                         catch (Exception ex)

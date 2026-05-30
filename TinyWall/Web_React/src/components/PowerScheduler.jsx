@@ -37,6 +37,24 @@ export default function PowerScheduler({ showToast }) {
   const [downloadSpeed, setDownloadSpeed] = useState(100); // in KB/s
   const [jellyfinPort, setJellyfinPort] = useState(8096);
 
+  // Chained / Combined Trigger States
+  const [chainActive, setChainActive] = useState(false);
+  const [selectedChainTrigger, setSelectedChainTrigger] = useState('jellyfin');
+  const [chainHours, setChainHours] = useState(0);
+  const [chainMinutes, setChainMinutes] = useState(30);
+  const [chainExactTime, setChainExactTime] = useState('23:30');
+  const [chainExactDate, setChainExactDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+  const [chainNextOption, setChainNextOption] = useState(true);
+  const [chainIdleMinutes, setChainIdleMinutes] = useState(15);
+  const [chainDownloadSpeed, setChainDownloadSpeed] = useState(100);
+  const [chainJellyfinPort, setChainJellyfinPort] = useState(8096);
+
   // Cancellation State
   const [cancelPassword, setCancelPassword] = useState('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
@@ -136,6 +154,29 @@ export default function PowerScheduler({ showToast }) {
         canCancel: allowCancel.toString(),
         exactTime: selectedTrigger === 'exact' ? getExactTimeISO(exactTime, exactDate, nextOption) : ''
       });
+
+      if (chainActive) {
+        let chainVal = 0;
+        if (selectedChainTrigger === 'duration') {
+          chainVal = (chainHours * 3600) + (chainMinutes * 60);
+          if (chainVal <= 0) {
+            alert("Please select a chained duration greater than 0 minutes.");
+            return;
+          }
+        } else if (selectedChainTrigger === 'idle') {
+          chainVal = chainIdleMinutes;
+        } else if (selectedChainTrigger === 'download') {
+          chainVal = chainDownloadSpeed;
+        } else if (selectedChainTrigger === 'jellyfin') {
+          chainVal = chainJellyfinPort;
+        }
+
+        params.append('chainTrigger', selectedChainTrigger);
+        params.append('chainValue', chainVal.toString());
+        if (selectedChainTrigger === 'exact') {
+          params.append('chainExactTime', getExactTimeISO(chainExactTime, chainExactDate, chainNextOption));
+        }
+      }
 
       const res = await fetch(`/api/power/schedule?${params.toString()}`, { method: 'POST' });
       const data = await res.json();
@@ -298,6 +339,25 @@ export default function PowerScheduler({ showToast }) {
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '30px' }}>
               Target Execution Local Time: <strong>{schedulerState.targetTime}</strong>
             </p>
+
+            {schedulerState.hasChainTrigger && (
+              <div style={{
+                background: 'rgba(0, 188, 212, 0.05)',
+                border: '1px solid rgba(0, 188, 212, 0.2)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                fontSize: '12px',
+                color: '#00bcd4',
+                maxWidth: '450px',
+                margin: '0 auto 20px auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}>
+                <span>🔗 <strong>Combination Chained Trigger Active:</strong> Satisfying current trigger will transition to <strong>{schedulerState.chainTrigger === 'jellyfin' ? 'Jellyfin Watch' : schedulerState.chainTrigger === 'exact' ? 'Exact Time' : schedulerState.chainTrigger === 'duration' ? 'Countdown' : schedulerState.chainTrigger}</strong> trigger next.</span>
+              </div>
+            )}
 
             {/* Cancel Actions */}
             {schedulerState.canCancel ? (
@@ -644,6 +704,234 @@ export default function PowerScheduler({ showToast }) {
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '6px' }}>
                     The PC will monitor streaming activity on port {jellyfinPort} and will automatically {selectedAction} <strong>exactly 5 minutes after</strong> all streaming devices disconnect!
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chained / Combined Trigger Option */}
+            <div style={{
+              background: '#161616',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              padding: '20px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    🔗 Chain Secondary Trigger (Combination Mode)
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    Satisfy the primary trigger, then transition to this second condition before executing
+                  </div>
+                </div>
+                <input 
+                  type="checkbox"
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+                  checked={chainActive}
+                  onChange={(e) => setChainActive(e.target.checked)}
+                />
+              </div>
+
+              {chainActive && (
+                <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '10px' }}>
+                    Select Chained Trigger Type
+                  </label>
+                  <div className="filter-btn-group" style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', background: '#121212', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
+                    {[
+                      { id: 'duration', name: 'Countdown', icon: Timer },
+                      { id: 'exact', name: 'Exact Time', icon: Clock },
+                      { id: 'idle', name: 'Idle Guard', icon: Monitor },
+                      { id: 'download', name: 'Download Target', icon: HardDrive },
+                      { id: 'jellyfin', name: 'Jellyfin Watch', icon: Tv }
+                    ].filter(t => t.id !== selectedTrigger).map((trig) => (
+                      <button
+                        key={trig.id}
+                        type="button"
+                        className={`filter-btn ${selectedChainTrigger === trig.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedChainTrigger(trig.id);
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', padding: '6px 10px', height: 'auto', borderRadius: '6px' }}
+                      >
+                        <trig.icon size={12} />
+                        {trig.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Chained Trigger Config Panel */}
+                  <div style={{ background: '#0e0e0e', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px', padding: '16px' }}>
+                    {selectedChainTrigger === 'duration' && (() => {
+                      return (
+                        <div>
+                          <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
+                            <div style={{ flex: 1 }}>
+                              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Hours</label>
+                              <input 
+                                type="range" 
+                                min="0" 
+                                max="12" 
+                                value={chainHours} 
+                                onChange={(e) => setChainHours(parseInt(e.target.value))}
+                                style={{ width: '100%', accentColor: currentActionTheme.color }}
+                              />
+                              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px', marginTop: '4px' }}>{chainHours} hrs</div>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Minutes</label>
+                              <input 
+                                type="range" 
+                                min="0" 
+                                max="59" 
+                                value={chainMinutes} 
+                                onChange={(e) => setChainMinutes(parseInt(e.target.value))}
+                                style={{ width: '100%', accentColor: currentActionTheme.color }}
+                              />
+                              <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px', marginTop: '4px' }}>{chainMinutes} mins</div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                            Then, countdown <strong>{chainHours > 0 ? `${chainHours} hours and ` : ''}{chainMinutes} minutes</strong>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {selectedChainTrigger === 'exact' && (() => {
+                      const [h, m] = chainExactTime.split(':').map(Number);
+                      let targetD = new Date(now);
+                      targetD.setHours(h, m, 0, 0);
+
+                      if (chainNextOption) {
+                        if (targetD <= now) {
+                          targetD.setDate(targetD.getDate() + 1);
+                        }
+                      } else {
+                        const [yr, mo, dy] = chainExactDate.split('-').map(Number);
+                        targetD = new Date(yr, mo - 1, dy, h, m, 0, 0);
+                      }
+
+                      const diffMs = targetD - now;
+                      const isPast = diffMs < 0;
+
+                      const formattedTimeStr = targetD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const formattedDateStr = targetD.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+                      return (
+                        <div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <span style={{ fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '2px' }}>Time</span>
+                                <input 
+                                  type="time" 
+                                  className="search-input" 
+                                  style={{ fontSize: '14px', padding: '6px 10px', width: '110px', textAlign: 'center' }}
+                                  value={chainExactTime}
+                                  onChange={(e) => setChainExactTime(e.target.value)}
+                                />
+                              </div>
+                              
+                              {!chainNextOption && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '2px' }}>Date</span>
+                                  <input 
+                                    type="date" 
+                                    className="search-input" 
+                                    style={{ fontSize: '14px', padding: '6px 10px', width: '140px', textAlign: 'center' }}
+                                    value={chainExactDate}
+                                    onChange={(e) => setChainExactDate(e.target.value)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.02)', padding: '4px 8px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                              <input 
+                                type="checkbox" 
+                                id="chainNextOption"
+                                style={{ width: '13px', height: '13px', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+                                checked={chainNextOption}
+                                onChange={(e) => setChainNextOption(e.target.checked)}
+                              />
+                              <label htmlFor="chainNextOption" style={{ fontSize: '10px', cursor: 'pointer', userSelect: 'none', color: 'var(--text-secondary)' }}>
+                                Next Occurrence (Auto Today/Tomorrow)
+                              </label>
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: '12px', color: isPast ? 'var(--danger-color)' : 'var(--text-secondary)', textAlign: 'center', marginTop: '12px', lineHeight: '1.4' }}>
+                            {isPast ? (
+                              <strong>⚠️ Selected chained time is in the past!</strong>
+                            ) : (
+                              <span>
+                                Then, wait until exact time <strong style={{ color: 'white' }}>{formattedTimeStr}</strong> on <strong style={{ color: 'white' }}>{formattedDateStr}</strong>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {selectedChainTrigger === 'idle' && (
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', textAlign: 'center' }}>
+                          Chained Idle Duration (Inactivity limit)
+                        </label>
+                        <input 
+                          type="number" 
+                          className="search-input" 
+                          min="1" 
+                          max="180" 
+                          style={{ width: '80px', display: 'block', margin: '0 auto', textAlign: 'center', fontSize: '13px', padding: '4px' }}
+                          value={chainIdleMinutes}
+                          onChange={(e) => setChainIdleMinutes(Math.max(1, parseInt(e.target.value) || 15))}
+                        />
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '8px' }}>
+                          Then, wait until system is completely idle for <strong>{chainIdleMinutes} minutes</strong>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedChainTrigger === 'download' && (
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', textAlign: 'center' }}>
+                          Chained Bandwidth threshold (KB/s)
+                        </label>
+                        <input 
+                          type="number" 
+                          className="search-input" 
+                          min="1" 
+                          style={{ width: '90px', display: 'block', margin: '0 auto', textAlign: 'center', fontSize: '13px', padding: '4px' }}
+                          value={chainDownloadSpeed}
+                          onChange={(e) => setChainDownloadSpeed(Math.max(1, parseInt(e.target.value) || 100))}
+                        />
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '8px' }}>
+                          Then, wait until download rate drops below <strong>{chainDownloadSpeed} KB/s</strong> for 3 minutes
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedChainTrigger === 'jellyfin' && (
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', textAlign: 'center' }}>
+                          Chained Jellyfin local port
+                        </label>
+                        <input 
+                          type="number" 
+                          className="search-input" 
+                          style={{ width: '90px', display: 'block', margin: '0 auto', textAlign: 'center', fontSize: '13px', padding: '4px' }}
+                          value={chainJellyfinPort}
+                          onChange={(e) => setChainJellyfinPort(Math.max(1, parseInt(e.target.value) || 8096))}
+                        />
+                        <div style={{ fontSize: '12px', color: '#00ffcc', textAlign: 'center', marginTop: '8px', fontWeight: 'bold' }}>
+                          📺 Streaming hold guard will active on port {chainJellyfinPort}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
