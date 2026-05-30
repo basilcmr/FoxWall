@@ -36,6 +36,7 @@ export default function PowerScheduler({ showToast }) {
   const [idleMinutes, setIdleMinutes] = useState(15);
   const [downloadSpeed, setDownloadSpeed] = useState(100); // in KB/s
   const [jellyfinPort, setJellyfinPort] = useState(8096);
+  const [graceMinutes, setGraceMinutes] = useState(5);
 
   // Chained / Combined Trigger States
   const [chainActive, setChainActive] = useState(false);
@@ -152,7 +153,8 @@ export default function PowerScheduler({ showToast }) {
         value: value.toString(),
         mode: selectedMode,
         canCancel: allowCancel.toString(),
-        exactTime: selectedTrigger === 'exact' ? getExactTimeISO(exactTime, exactDate, nextOption) : ''
+        exactTime: selectedTrigger === 'exact' ? getExactTimeISO(exactTime, exactDate, nextOption) : '',
+        graceSeconds: (graceMinutes * 60).toString()
       });
 
       if (chainActive) {
@@ -947,7 +949,7 @@ export default function PowerScheduler({ showToast }) {
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
-                    { id: 'smart', label: 'Smart Hybrid (Graceful 5m, then Force)', desc: 'Allows 5 mins to save before force close (Recommended)' },
+                    { id: 'smart', label: `Smart Hybrid (Graceful ${graceMinutes}m, then Force)`, desc: `Allows ${graceMinutes} mins to save before force close (Recommended)` },
                     { id: 'graceful', label: 'Graceful Prompt', desc: 'Prompts to save open files, lets apps block shutdown' },
                     { id: 'force', label: 'Force Close Immediately', desc: 'Instantly terminates all applications and actions' }
                   ].map((pol) => (
@@ -967,6 +969,21 @@ export default function PowerScheduler({ showToast }) {
                       <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{pol.desc}</div>
                     </div>
                   ))}
+                  {selectedMode === 'smart' && (
+                    <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '6px', padding: '12px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                        Smart Grace Delay: <strong>{graceMinutes} minutes</strong>
+                      </label>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="60" 
+                        value={graceMinutes} 
+                        onChange={(e) => setGraceMinutes(parseInt(e.target.value))}
+                        style={{ width: '100%', accentColor: currentActionTheme.color }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
