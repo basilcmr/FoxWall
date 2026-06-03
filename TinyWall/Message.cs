@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -29,6 +29,9 @@ namespace pylorak.TinyWall
                 MessageType.STOP_SERVICE => (TwMessage?)JsonSerializer.Deserialize<TwMessageSimple>(ref reader, SourceGenerationContext.Default.TwMessageSimple),
                 MessageType.MINUTE_TIMER => (TwMessage?)JsonSerializer.Deserialize<TwMessageSimple>(ref reader, SourceGenerationContext.Default.TwMessageSimple),
                 MessageType.ADD_TEMPORARY_EXCEPTION => (TwMessage?)JsonSerializer.Deserialize<TwMessageAddTempException>(ref reader, SourceGenerationContext.Default.TwMessageAddTempException),
+                // [FoxWall Enhancement] - Start
+                MessageType.AUTOASK_PENDING_ENTRIES => (TwMessage?)JsonSerializer.Deserialize<TwMessageAutoAskEntries>(ref reader, SourceGenerationContext.Default.TwMessageAutoAskEntries),
+                // [FoxWall Enhancement] - End
                 _ => throw new JsonException($"Tried to deserialize unsupported type with discriminator {(MessageType)discriminator}."),
             };
             return ret;
@@ -64,6 +67,10 @@ namespace pylorak.TinyWall
                     JsonSerializer.Serialize<TwMessageSimple>(writer, typedVal, SourceGenerationContext.Default.TwMessageSimple); break;
                 case TwMessageAddTempException typedVal:
                     JsonSerializer.Serialize<TwMessageAddTempException>(writer, typedVal, SourceGenerationContext.Default.TwMessageAddTempException); break;
+                // [FoxWall Enhancement] - Start
+                case TwMessageAutoAskEntries typedVal:
+                    JsonSerializer.Serialize<TwMessageAutoAskEntries>(writer, typedVal, SourceGenerationContext.Default.TwMessageAutoAskEntries); break;
+                // [FoxWall Enhancement] - End
                 default:
                     throw new JsonException($"Tried to serialize unsupported type {value.GetType()}.");
             };

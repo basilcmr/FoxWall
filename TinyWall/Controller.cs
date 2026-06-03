@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using pylorak.Utilities;
 
@@ -105,5 +105,17 @@ namespace pylorak.TinyWall
             else
                 return string.Empty;
         }
+
+        // [FoxWall Enhancement] - Start
+        public AutoAskPendingEntry[] GetPendingAutoAskEntries()
+        {
+            var resp = Endpoint.QueueMessage(TwMessageAutoAskEntries.CreateRequest()).Response;
+            if (resp is TwMessageAutoAskEntries autoAskResp)
+            {
+                return autoAskResp.Entries;
+            }
+            return Array.Empty<AutoAskPendingEntry>();
+        }
+        // [FoxWall Enhancement] - End
     }
 }

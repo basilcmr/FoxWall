@@ -1,4 +1,4 @@
-﻿namespace pylorak.TinyWall
+namespace pylorak.TinyWall
 {
     // Possible message types from controller to service
     public enum MessageType
@@ -14,6 +14,9 @@
         GET_PROCESS_PATH,
         READ_FW_LOG,
         IS_LOCKED,
+        // [FoxWall Enhancement] - Start
+        AUTOASK_PENDING_ENTRIES = 27,
+        // [FoxWall Enhancement] - End
 
         // Unprivileged write commands (>1023)
         UNLOCK = 1024,

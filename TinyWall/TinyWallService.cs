@@ -145,6 +145,15 @@ namespace pylorak.TinyWall
                         rules.Add(def);
                         break;
                     }
+                // [FoxWall Enhancement] - Start
+                case FirewallMode.AutoAsk:
+                    {
+                        // Block all by default (same as Normal mode, but LogWatcher is active to prompt for unknowns)
+                        var def = new RuleDef(ModeId, "Block everything", GlobalSubject.Instance, RuleAction.Block, RuleDirection.InOut, Protocol.Any, (ulong)FilterWeights.DefaultBlock);
+                        rules.Add(def);
+                        break;
+                    }
+                // [FoxWall Enhancement] - End
                 case FirewallMode.JellyMode:
                     {
                         // We won't need application exceptions
@@ -1456,7 +1465,13 @@ namespace pylorak.TinyWall
 
                         try
                         {
-                            LogWatcher.Enabled = (FirewallMode.Learning == newMode);
+                            // [FoxWall Enhancement] - Start
+                            LogWatcher.Enabled = (FirewallMode.Learning == newMode || FirewallMode.AutoAsk == newMode);
+                            if (newMode == FirewallMode.AutoAsk)
+                            {
+                                AutoAskManager.Instance.Clear();
+                            }
+                            // [FoxWall Enhancement] - End
                         }
                         catch (Exception e)
                         {
@@ -1469,7 +1484,10 @@ namespace pylorak.TinyWall
                         VisibleState.Mode = newMode;
                         if ((ActiveConfig.Service.StartupMode != VisibleState.Mode) &&
                             (VisibleState.Mode != FirewallMode.Disabled) &&
-                            (VisibleState.Mode != FirewallMode.Learning) )
+                            (VisibleState.Mode != FirewallMode.Learning) &&
+                            // [FoxWall Enhancement] - Start
+                            (VisibleState.Mode != FirewallMode.AutoAsk) )
+                            // [FoxWall Enhancement] - End
                         {
                             ActiveConfig.Service.StartupMode = VisibleState.Mode;
                             save_needed = true;
@@ -1667,6 +1685,14 @@ namespace pylorak.TinyWall
                         }
                         return args.CreateResponse(args.PowerOn);
                     }
+                // [FoxWall Enhancement] - Start
+                case MessageType.AUTOASK_PENDING_ENTRIES:
+                    {
+                        var args = (TwMessageAutoAskEntries)req;
+                        var entries = AutoAskManager.Instance.PopPendingEntries();
+                        return args.CreateResponse(entries);
+                    }
+                // [FoxWall Enhancement] - End
                 default:
                     {
                         return TwMessageError.Instance;
@@ -1991,6 +2017,14 @@ namespace pylorak.TinyWall
 
         private void AutoLearnLogEntry(FirewallLogEntry entry)
         {
+            // [FoxWall Enhancement] - Start
+            if (VisibleState.Mode == FirewallMode.AutoAsk)
+            {
+                AutoAskManager.Instance.HandleBlockedEntry(entry);
+                return;
+            }
+            // [FoxWall Enhancement] - End
+
             if (  // IPv4
                 ((string.Equals(entry.RemoteIp, "127.0.0.1", StringComparison.Ordinal)
                 && string.Equals(entry.LocalIp, "127.0.0.1", StringComparison.Ordinal)))

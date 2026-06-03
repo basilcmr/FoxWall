@@ -46,6 +46,9 @@ namespace pylorak.TinyWall
             nameof(mnuAllowLocalSubnet),
             nameof(mnuEnableHostsBlocklist),
             nameof(mnuTrafficRate),
+            // [FoxWall Enhancement] - Start
+            nameof(mnuModeAutoAsk),
+            // [FoxWall Enhancement] - End
             nameof(mnuModeLearn)
         )]
         private void InitializeComponent()
@@ -123,6 +126,12 @@ namespace pylorak.TinyWall
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
             resources.ApplyResources(this.toolStripMenuItem1, "toolStripMenuItem1");
+            // [FoxWall Enhancement] - Start
+            this.mnuModeAutoAsk = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuModeAutoAsk.Name = "mnuModeAutoAsk";
+            this.mnuModeAutoAsk.Text = "AutoAsk Mode";
+            this.mnuModeAutoAsk.Click += new System.EventHandler(this.mnuModeAutoAsk_Click);
+            // [FoxWall Enhancement] - End
             // 
             // mnuMode
             // 
@@ -133,7 +142,11 @@ namespace pylorak.TinyWall
             this.mnuModeAllowOutgoing,
             this.mnuModeDisabled,
             this.mnuModeLearn,
-            this.mnuModeJellyMode});
+            this.mnuModeJellyMode,
+            // [FoxWall Enhancement] - Start
+            this.mnuModeAutoAsk
+            // [FoxWall Enhancement] - End
+            });
             this.mnuMode.Name = "mnuMode";
             resources.ApplyResources(this.mnuMode, "mnuMode");
             // 
@@ -297,6 +310,7 @@ namespace pylorak.TinyWall
 
         // [FoxWall Enhancement] - Start of Custom Web Dashboard Declarations
         private System.Windows.Forms.ToolStripMenuItem mnuSecurityMonitor;
+        private System.Windows.Forms.ToolStripMenuItem mnuModeAutoAsk;
         private DashboardServer? DashboardServerInstance;
         public string ActiveModeName
         {
@@ -310,6 +324,7 @@ namespace pylorak.TinyWall
                     FirewallMode.Learning => "Learning",
                     FirewallMode.Disabled => "Disabled",
                     FirewallMode.JellyMode => "Jelly Mode",
+                    FirewallMode.AutoAsk => "AutoAsk",
                     _ => "Unknown"
                 };
             }
@@ -642,6 +657,14 @@ namespace pylorak.TinyWall
                     FirewallModeName = Resources.Messages.FirewallModeLearn;
                     break;
 
+                // [FoxWall Enhancement] - Start
+                case FirewallMode.AutoAsk:
+                    Tray.Icon = Resources.Icons.shield_blue_small;
+                    mnuMode.Image = mnuModeAutoAsk.Image;
+                    FirewallModeName = "AutoAsk";
+                    break;
+                // [FoxWall Enhancement] - End
+
                 case FirewallMode.JellyMode:
                     Tray.Icon = Resources.Icons.shield_purple_small;
                     mnuMode.Image = mnuModeJellyMode.Image;
@@ -676,6 +699,9 @@ namespace pylorak.TinyWall
                 FirewallMode.Disabled => Resources.Messages.TheFirewallIsNowDisabled,
                 FirewallMode.Learning => Resources.Messages.TheFirewallIsNowLearning,
                 FirewallMode.JellyMode => "The firewall is now in Jelly Mode. Only local Jellyfin connections are allowed.",
+                // [FoxWall Enhancement] - Start
+                FirewallMode.AutoAsk => "The firewall is now in AutoAsk mode. Unknown connections will ask for permission.",
+                // [FoxWall Enhancement] - End
                 _ => string.Empty
             };
 
@@ -683,6 +709,16 @@ namespace pylorak.TinyWall
             {
                 case MessageType.MODE_SWITCH:
                     FirewallState.Mode = mode;
+                    // [FoxWall Enhancement] - Start
+                    if (mode == FirewallMode.AutoAsk)
+                    {
+                        AutoAskPromptManager.Instance.Start();
+                    }
+                    else
+                    {
+                        AutoAskPromptManager.Instance.Stop();
+                    }
+                    // [FoxWall Enhancement] - End
                     ShowBalloonTip(usermsg, ToolTipIcon.Info);
                     break;
                 default:
@@ -828,7 +864,19 @@ namespace pylorak.TinyWall
             FirewallState.ClientNotifs.Clear();
 
             if (updated)
+            {
+                // [FoxWall Enhancement] - Start
+                if (FirewallState.Mode == FirewallMode.AutoAsk)
+                {
+                    AutoAskPromptManager.Instance.Start();
+                }
+                else
+                {
+                    AutoAskPromptManager.Instance.Stop();
+                }
+                // [FoxWall Enhancement] - End
                 UpdateDisplay();
+            }
 
             return updated;
         }
@@ -1447,6 +1495,17 @@ namespace pylorak.TinyWall
             UpdateDisplay();
         }
 
+        // [FoxWall Enhancement] - Start
+        private void mnuModeAutoAsk_Click(object sender, EventArgs e)
+        {
+            if (!EnsureUnlockedServer())
+                return;
+
+            SetMode(FirewallMode.AutoAsk);
+            UpdateDisplay();
+        }
+        // [FoxWall Enhancement] - End
+
         private void InitController()
         {
             mnuTrafficRate.Text = string.Format(CultureInfo.CurrentCulture, "{0}: {1}   {2}: {3}", Resources.Messages.TrafficIn, "...", Resources.Messages.TrafficOut, "...");
@@ -1478,6 +1537,9 @@ namespace pylorak.TinyWall
                 mnuModeNormal.Image = Resources.Icons.shield_green_small.ToBitmap();
                 mnuModeLearn.Image = Resources.Icons.shield_blue_small.ToBitmap();
                 mnuModeJellyMode.Image = Resources.Icons.shield_purple;
+                // [FoxWall Enhancement] - Start
+                mnuModeAutoAsk.Image = Resources.Icons.shield_blue_small.ToBitmap();
+                // [FoxWall Enhancement] - End
                 TrayMenuShowing = false;
 
                 ApplyControllerSettings();

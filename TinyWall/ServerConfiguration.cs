@@ -14,6 +14,9 @@ namespace pylorak.TinyWall
         Disabled,
         Learning,
         JellyMode,
+        // [FoxWall Enhancement] - Start
+        AutoAsk = 6,
+        // [FoxWall Enhancement] - End
         Unknown = 100
     }
 
