@@ -88,8 +88,8 @@ namespace pylorak.TinyWall
             switch (decision)
             {
                 case AutoAskPromptForm.PromptResult.AllowUnrestricted:
-                    // Full access
-                    exceptions.Add(new FirewallExceptionV3(newSubject, new UnrestrictedPolicy()));
+                    // Unrestricted TCP and UDP
+                    exceptions.Add(new FirewallExceptionV3(newSubject, new TcpUdpPolicy(unrestricted: true)));
                     break;
 
                 case AutoAskPromptForm.PromptResult.AllowWebOnly:

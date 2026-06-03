@@ -15,7 +15,8 @@ namespace pylorak.TinyWall
             AllowUnrestricted,
             AllowWebOnly,
             BlockOnce,
-            BlockAlways
+            BlockAlways,
+            Customized
         }
 
         public PromptResult SelectedResult { get; private set; } = PromptResult.BlockOnce;
@@ -183,12 +184,14 @@ namespace pylorak.TinyWall
 
             var links = new List<(string text, string tag)>();
             links.Add(("Open Folder", "folder"));
+            links.Add(("Verify Signature", "signature"));
             links.Add(("Check VirusTotal", "virustotal"));
             links.Add(("Google Process", "google_process"));
             if (!string.IsNullOrEmpty(_remoteIp) && _remoteIp != "::" && _remoteIp != "0.0.0.0" && _remoteIp != "127.0.0.1" && _remoteIp != "::1")
             {
                 links.Add(("Search IP", "google_ip"));
             }
+            links.Add(("Customize Rule", "customize"));
 
             string verifyText = "";
             lnkVerify.Links.Clear();
@@ -224,6 +227,23 @@ namespace pylorak.TinyWall
                         }
                     }
                 }
+                else if (tag == "signature")
+                {
+                    if (File.Exists(_appPath))
+                    {
+                        var tempSubj = new ExecutableSubject(_appPath);
+                        bool isSigned = tempSubj.IsSigned;
+                        bool certValid = tempSubj.CertValid;
+                        string certSubject = tempSubj.CertSubject ?? "Unknown / Unsigned";
+
+                        using var sigForm = new SignatureDetailsForm(_appPath, isSigned, certValid, certSubject);
+                        sigForm.ShowDialog(this);
+                    }
+                    else
+                    {
+                        MessageBox.Show(this, "The file does not exist to verify signature.", "FoxWall", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
                 else if (tag == "virustotal")
                 {
                     string hash = Hasher.HashFile(_appPath);
@@ -233,13 +253,32 @@ namespace pylorak.TinyWall
                 else if (tag == "google_process")
                 {
                     string filename = Path.GetFileName(_appPath);
-                    string url = $"https://www.google.com/search?q={Uri.EscapeDataString(filename)}";
+                    string query = $"is {filename} safe legitimate or malware virus";
+                    string url = $"https://www.google.com/search?q={Uri.EscapeDataString(query)}";
                     Utils.StartProcess(url, string.Empty, false);
                 }
                 else if (tag == "google_ip")
                 {
                     string url = $"https://www.google.com/search?q={Uri.EscapeDataString(_remoteIp)}";
                     Utils.StartProcess(url, string.Empty, false);
+                }
+                else if (tag == "customize")
+                {
+                    var subject = new ExecutableSubject(_appPath);
+                    var exception = new FirewallExceptionV3(subject, new TcpUdpPolicy(unrestricted: true));
+                    
+                    using var f = new ApplicationExceptionForm(exception);
+                    if (f.ShowDialog(this) == DialogResult.OK)
+                    {
+                        var controller = GlobalInstances.TinyWallControllerInstance;
+                        if (controller != null && f.ExceptionSettings != null && f.ExceptionSettings.Count > 0)
+                        {
+                            controller.AddExceptions(f.ExceptionSettings, false);
+                        }
+                        this.SelectedResult = PromptResult.Customized;
+                        this.DialogResult = DialogResult.OK;
+                        this.Close();
+                    }
                 }
             }
             catch (Exception ex)
