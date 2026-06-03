@@ -53,7 +53,7 @@ namespace pylorak.TinyWall
         private void InitializeComponent()
         {
             this.Text = "FoxWall Connection Alert";
-            this.Size = new Size(500, 320);
+            this.Size = new Size(500, 360);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -86,15 +86,15 @@ namespace pylorak.TinyWall
             lblDetails = new Label
             {
                 Location = new Point(20, 95),
-                Size = new Size(440, 50),
+                Size = new Size(460, 45),
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 ForeColor = Color.LightGray
             };
 
             lnkVerify = new LinkLabel
             {
-                Location = new Point(20, 150),
-                Size = new Size(440, 20),
+                Location = new Point(20, 145),
+                Size = new Size(460, 35),
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
                 LinkColor = Color.FromArgb(160, 120, 255),
                 ActiveLinkColor = Color.White,
@@ -105,8 +105,8 @@ namespace pylorak.TinyWall
             btnAllowUnrestricted = new Button
             {
                 Text = "Allow (Always)",
-                Location = new Point(20, 180),
-                Size = new Size(210, 35),
+                Location = new Point(20, 195),
+                Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
             btnAllowUnrestricted.Click += (s, e) => { SelectedResult = PromptResult.AllowUnrestricted; };
@@ -114,8 +114,8 @@ namespace pylorak.TinyWall
             btnAllowWebOnly = new Button
             {
                 Text = "Allow (Web Only - 80/443)",
-                Location = new Point(250, 180),
-                Size = new Size(210, 35),
+                Location = new Point(260, 195),
+                Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
             btnAllowWebOnly.Click += (s, e) => { SelectedResult = PromptResult.AllowWebOnly; };
@@ -123,8 +123,8 @@ namespace pylorak.TinyWall
             btnBlockOnce = new Button
             {
                 Text = "Block (Once)",
-                Location = new Point(20, 230),
-                Size = new Size(210, 35),
+                Location = new Point(20, 245),
+                Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
             btnBlockOnce.Click += (s, e) => { SelectedResult = PromptResult.BlockOnce; };
@@ -132,8 +132,8 @@ namespace pylorak.TinyWall
             btnBlockAlways = new Button
             {
                 Text = "Block (Always)",
-                Location = new Point(250, 230),
-                Size = new Size(210, 35),
+                Location = new Point(260, 245),
+                Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
             btnBlockAlways.Click += (s, e) => { SelectedResult = PromptResult.BlockAlways; };
