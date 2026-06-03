@@ -2017,9 +2017,22 @@ namespace pylorak.TinyWall
 
         private void AutoLearnLogEntry(FirewallLogEntry entry)
         {
+            // Certain things we don't want to whitelist or ask for
+            if (Utils.IsNullOrEmpty(entry.AppPath)
+                || string.Equals(entry.AppPath, "System", StringComparison.InvariantCultureIgnoreCase)
+                || string.Equals(entry.AppPath, "svchost.exe", StringComparison.InvariantCultureIgnoreCase)
+                )
+                return;
+
             // [FoxWall Enhancement] - Start
             if (VisibleState.Mode == FirewallMode.AutoAsk)
             {
+                lock (InheritanceGuard)
+                {
+                    if (UserSubjectExes.Contains(entry.AppPath))
+                        return;
+                }
+
                 AutoAskManager.Instance.HandleBlockedEntry(entry);
                 return;
             }

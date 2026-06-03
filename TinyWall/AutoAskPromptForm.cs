@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -28,6 +30,7 @@ namespace pylorak.TinyWall
         private Label? lblAppName;
         private Label? lblAppPath;
         private Label? lblDetails;
+        private LinkLabel? lnkVerify;
         private Button? btnAllowUnrestricted;
         private Button? btnAllowWebOnly;
         private Button? btnBlockOnce;
@@ -82,10 +85,21 @@ namespace pylorak.TinyWall
             lblDetails = new Label
             {
                 Location = new Point(20, 95),
-                Size = new Size(440, 65),
+                Size = new Size(440, 50),
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 ForeColor = Color.LightGray
             };
+
+            lnkVerify = new LinkLabel
+            {
+                Location = new Point(20, 150),
+                Size = new Size(440, 20),
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                LinkColor = Color.FromArgb(160, 120, 255),
+                ActiveLinkColor = Color.White,
+                BackColor = Color.Transparent
+            };
+            lnkVerify.LinkClicked += lnkVerify_LinkClicked;
 
             btnAllowUnrestricted = new Button
             {
@@ -127,6 +141,7 @@ namespace pylorak.TinyWall
             this.Controls.Add(lblAppName);
             this.Controls.Add(lblAppPath);
             this.Controls.Add(lblDetails);
+            this.Controls.Add(lnkVerify);
             this.Controls.Add(btnAllowUnrestricted);
             this.Controls.Add(btnAllowWebOnly);
             this.Controls.Add(btnBlockOnce);
@@ -135,7 +150,7 @@ namespace pylorak.TinyWall
 
         private void LoadAppDetails()
         {
-            if (lblAppName == null || lblAppPath == null || lblDetails == null || picIcon == null)
+            if (lblAppName == null || lblAppPath == null || lblDetails == null || picIcon == null || lnkVerify == null)
                 return;
 
             try
@@ -164,8 +179,73 @@ namespace pylorak.TinyWall
             string destStr = string.IsNullOrEmpty(_remoteIp) ? "unknown address" : $"{_remoteIp}{portStr}";
 
             lblDetails.Text = $"An unknown application wants to initiate an {dirStr} {protoStr} connection.\n" +
-                              $"Destination: {destStr}\n\n" +
-                              "How do you want to handle this request?";
+                              $"Destination: {destStr}";
+
+            var links = new List<(string text, string tag)>();
+            links.Add(("Open Folder", "folder"));
+            links.Add(("Check VirusTotal", "virustotal"));
+            links.Add(("Google Process", "google_process"));
+            if (!string.IsNullOrEmpty(_remoteIp) && _remoteIp != "::" && _remoteIp != "0.0.0.0" && _remoteIp != "127.0.0.1" && _remoteIp != "::1")
+            {
+                links.Add(("Search IP", "google_ip"));
+            }
+
+            string verifyText = "";
+            lnkVerify.Links.Clear();
+            for (int i = 0; i < links.Count; i++)
+            {
+                if (i > 0) verifyText += "  |  ";
+                int start = verifyText.Length;
+                verifyText += links[i].text;
+                lnkVerify.Links.Add(start, links[i].text.Length, links[i].tag);
+            }
+            lnkVerify.Text = verifyText;
+        }
+
+        private void lnkVerify_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            string? tag = e.Link.LinkData as string;
+            if (string.IsNullOrEmpty(tag)) return;
+
+            try
+            {
+                if (tag == "folder")
+                {
+                    if (File.Exists(_appPath))
+                    {
+                        Process.Start("explorer.exe", $"/select,\"{_appPath}\"");
+                    }
+                    else
+                    {
+                        string? dir = Path.GetDirectoryName(_appPath);
+                        if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                        {
+                            Process.Start("explorer.exe", $"\"{dir}\"");
+                        }
+                    }
+                }
+                else if (tag == "virustotal")
+                {
+                    string hash = Hasher.HashFile(_appPath);
+                    string url = $"https://www.virustotal.com/gui/search/{hash}";
+                    Utils.StartProcess(url, string.Empty, false);
+                }
+                else if (tag == "google_process")
+                {
+                    string filename = Path.GetFileName(_appPath);
+                    string url = $"https://www.google.com/search?q={Uri.EscapeDataString(filename)}";
+                    Utils.StartProcess(url, string.Empty, false);
+                }
+                else if (tag == "google_ip")
+                {
+                    string url = $"https://www.google.com/search?q={Uri.EscapeDataString(_remoteIp)}";
+                    Utils.StartProcess(url, string.Empty, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Could not perform action: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
     // [FoxWall Enhancement] - End
