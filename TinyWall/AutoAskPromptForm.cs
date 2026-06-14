@@ -20,6 +20,7 @@ namespace pylorak.TinyWall
         }
 
         public PromptResult SelectedResult { get; private set; } = PromptResult.BlockOnce;
+        public bool ChildProcessesInherit => ActiveConfig.Controller.AutoAskChildInherit;
 
         private readonly string _appPath;
         private readonly string _remoteIp;
@@ -31,7 +32,7 @@ namespace pylorak.TinyWall
         private Label? lblAppName;
         private Label? lblAppPath;
         private Label? lblDetails;
-        private LinkLabel? lnkVerify;
+        private FlowLayoutPanel? pnlOptions;
         private Button? btnAllowUnrestricted;
         private Button? btnAllowWebOnly;
         private Button? btnBlockOnce;
@@ -53,7 +54,7 @@ namespace pylorak.TinyWall
         private void InitializeComponent()
         {
             this.Text = "FoxWall Connection Alert";
-            this.Size = new Size(500, 360);
+            this.Size = new Size(500, 395);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -91,21 +92,19 @@ namespace pylorak.TinyWall
                 ForeColor = Color.LightGray
             };
 
-            lnkVerify = new LinkLabel
+            pnlOptions = new FlowLayoutPanel
             {
                 Location = new Point(20, 145),
-                Size = new Size(460, 35),
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-                LinkColor = Color.FromArgb(160, 120, 255),
-                ActiveLinkColor = Color.White,
-                BackColor = Color.Transparent
+                Size = new Size(460, 65),
+                BackColor = Color.Transparent,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true
             };
-            lnkVerify.LinkClicked += lnkVerify_LinkClicked;
 
             btnAllowUnrestricted = new Button
             {
                 Text = "Allow (Always)",
-                Location = new Point(20, 195),
+                Location = new Point(20, 225),
                 Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
@@ -114,7 +113,7 @@ namespace pylorak.TinyWall
             btnAllowWebOnly = new Button
             {
                 Text = "Allow (Web Only - 80/443)",
-                Location = new Point(260, 195),
+                Location = new Point(260, 225),
                 Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
@@ -123,7 +122,7 @@ namespace pylorak.TinyWall
             btnBlockOnce = new Button
             {
                 Text = "Block (Once)",
-                Location = new Point(20, 245),
+                Location = new Point(20, 275),
                 Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
@@ -132,7 +131,7 @@ namespace pylorak.TinyWall
             btnBlockAlways = new Button
             {
                 Text = "Block (Always)",
-                Location = new Point(260, 245),
+                Location = new Point(260, 275),
                 Size = new Size(220, 35),
                 DialogResult = DialogResult.OK
             };
@@ -142,7 +141,7 @@ namespace pylorak.TinyWall
             this.Controls.Add(lblAppName);
             this.Controls.Add(lblAppPath);
             this.Controls.Add(lblDetails);
-            this.Controls.Add(lnkVerify);
+            this.Controls.Add(pnlOptions);
             this.Controls.Add(btnAllowUnrestricted);
             this.Controls.Add(btnAllowWebOnly);
             this.Controls.Add(btnBlockOnce);
@@ -151,7 +150,7 @@ namespace pylorak.TinyWall
 
         private void LoadAppDetails()
         {
-            if (lblAppName == null || lblAppPath == null || lblDetails == null || picIcon == null || lnkVerify == null)
+            if (lblAppName == null || lblAppPath == null || lblDetails == null || picIcon == null || pnlOptions == null)
                 return;
 
             try
@@ -187,28 +186,125 @@ namespace pylorak.TinyWall
             links.Add(("Verify Signature", "signature"));
             links.Add(("Check VirusTotal", "virustotal"));
             links.Add(("Google Process", "google_process"));
+            links.Add(("Can I Block?", "google_block"));
             if (!string.IsNullOrEmpty(_remoteIp) && _remoteIp != "::" && _remoteIp != "0.0.0.0" && _remoteIp != "127.0.0.1" && _remoteIp != "::1")
             {
                 links.Add(("Search IP", "google_ip"));
             }
             links.Add(("Customize Rule", "customize"));
 
-            string verifyText = "";
-            lnkVerify.Links.Clear();
-            for (int i = 0; i < links.Count; i++)
+            if (pnlOptions == null) return;
+
+            pnlOptions.Controls.Clear();
+            foreach (var link in links)
             {
-                if (i > 0) verifyText += "  |  ";
-                int start = verifyText.Length;
-                verifyText += links[i].text;
-                lnkVerify.Links.Add(start, links[i].text.Length, links[i].tag);
+                var btn = new Button
+                {
+                    Text = link.text,
+                    Tag = link.tag,
+                    FlatStyle = FlatStyle.Flat,
+                    Height = 25,
+                    Margin = new Padding(0, 0, 5, 5),
+                    AutoSize = true,
+                    Font = new Font("Segoe UI", 8.25F, FontStyle.Regular)
+                };
+                btn.Click += OptionButton_Click;
+                
+                // Dynamically apply themes if dark mode is active
+                ThemeManager.ApplyToControl(btn);
+                
+                // Style option buttons differently (transparent background, subtle gray border)
+                btn.BackColor = Color.Transparent;
+                btn.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
+                btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 45);
+                btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(30, 30, 30);
+                
+                pnlOptions.Controls.Add(btn);
+
+                // Add small setup cogwheel next to Google Process and Can I Block
+                if (link.tag == "google_process" || link.tag == "google_block")
+                {
+                    var btnSetup = new Button
+                    {
+                        Text = "⚙",
+                        Tag = link.tag + "_setup",
+                        FlatStyle = FlatStyle.Flat,
+                        Height = 25,
+                        Width = 25,
+                        Margin = new Padding(0, 0, 8, 5),
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+                    };
+                    btnSetup.Click += SetupButton_Click;
+                    ThemeManager.ApplyToControl(btnSetup);
+                    
+                    // Style differently (transparent background, subtle gray border)
+                    btnSetup.BackColor = Color.Transparent;
+                    btnSetup.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
+                    btnSetup.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 45);
+                    btnSetup.FlatAppearance.MouseDownBackColor = Color.FromArgb(30, 30, 30);
+
+                    pnlOptions.Controls.Add(btnSetup);
+                }
             }
-            lnkVerify.Text = verifyText;
         }
 
-        private void lnkVerify_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void SetupButton_Click(object? sender, EventArgs e)
         {
-            string? tag = e.Link.LinkData as string;
-            if (string.IsNullOrEmpty(tag)) return;
+            if (sender is Button btn && btn.Tag is string tag)
+            {
+                var contextMenu = new ContextMenuStrip();
+                ThemeManager.ApplyToControl(contextMenu);
+                contextMenu.Renderer = ThemeManager.GetToolStripRenderer();
+
+                if (tag == "google_process_setup")
+                {
+                    var item = new ToolStripMenuItem("Include block safety check in search")
+                    {
+                        CheckOnClick = true,
+                        Checked = ActiveConfig.Controller.AutoAskIncludeBlockCheck
+                    };
+                    item.CheckedChanged += (s, ev) =>
+                    {
+                        ActiveConfig.Controller.AutoAskIncludeBlockCheck = item.Checked;
+                        ActiveConfig.Controller.Save();
+                    };
+                    contextMenu.Items.Add(item);
+                }
+                else if (tag == "google_block_setup")
+                {
+                    var item = new ToolStripMenuItem("Apply rules to child processes (subtasks)")
+                    {
+                        CheckOnClick = true,
+                        Checked = ActiveConfig.Controller.AutoAskChildInherit
+                    };
+                    item.CheckedChanged += (s, ev) =>
+                    {
+                        ActiveConfig.Controller.AutoAskChildInherit = item.Checked;
+                        ActiveConfig.Controller.Save();
+                    };
+                    contextMenu.Items.Add(item);
+                }
+
+                foreach (ToolStripItem item in contextMenu.Items)
+                {
+                    item.ForeColor = ThemeManager.TextPrimary;
+                    item.BackColor = ThemeManager.BackgroundColor;
+                }
+
+                contextMenu.Show(btn, new Point(0, btn.Height));
+            }
+        }
+
+        private void OptionButton_Click(object? sender, EventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string tag)
+            {
+                TriggerOptionAction(tag);
+            }
+        }
+
+        private void TriggerOptionAction(string tag)
+        {
 
             try
             {
@@ -254,6 +350,23 @@ namespace pylorak.TinyWall
                 {
                     string filename = Path.GetFileName(_appPath);
                     string query = $"is {filename} safe legitimate or malware virus";
+                    if (ActiveConfig.Controller.AutoAskIncludeBlockCheck)
+                    {
+                        bool withSubtasks = ActiveConfig.Controller.AutoAskChildInherit;
+                        query += withSubtasks
+                            ? $" and is it ok to block it and its child processes using TinyWall"
+                            : $" and is it ok to block it using TinyWall";
+                    }
+                    string url = $"https://www.google.com/search?q={Uri.EscapeDataString(query)}";
+                    Utils.StartProcess(url, string.Empty, false);
+                }
+                else if (tag == "google_block")
+                {
+                    string filename = Path.GetFileName(_appPath);
+                    bool withSubtasks = ActiveConfig.Controller.AutoAskChildInherit;
+                    string query = withSubtasks 
+                        ? $"is it ok to block {filename} and its child processes using TinyWall"
+                        : $"is it ok to block {filename} using TinyWall";
                     string url = $"https://www.google.com/search?q={Uri.EscapeDataString(query)}";
                     Utils.StartProcess(url, string.Empty, false);
                 }

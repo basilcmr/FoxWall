@@ -82,6 +82,12 @@ namespace pylorak.TinyWall
         [DataMember(EmitDefaultValue = false)]
         public bool EnableDarkMode = true;
 
+        [DataMember(EmitDefaultValue = false)]
+        public bool AutoAskIncludeBlockCheck = false;
+
+        [DataMember(EmitDefaultValue = false)]
+        public bool AutoAskChildInherit = false;
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext sc)
         {

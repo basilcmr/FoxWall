@@ -140,7 +140,7 @@ namespace pylorak.TinyWall
             }
         }
 
-        private static void ApplyToControl(Control ctrl)
+        internal static void ApplyToControl(Control ctrl)
         {
             // Dynamically upgrade control fonts to Segoe UI for a modern visual feel
             if (ctrl.Font != null && ctrl.Font.Name != "Segoe UI")

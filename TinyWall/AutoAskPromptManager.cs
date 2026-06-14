@@ -67,7 +67,7 @@ namespace pylorak.TinyWall
                     DialogResult res = form.ShowDialog();
                     if (res == DialogResult.OK)
                     {
-                        ProcessUserDecision(entry, form.SelectedResult);
+                        ProcessUserDecision(entry, form.SelectedResult, form.ChildProcessesInherit);
                     }
                 }
             }
@@ -77,7 +77,7 @@ namespace pylorak.TinyWall
             }
         }
 
-        private void ProcessUserDecision(AutoAskPendingEntry entry, AutoAskPromptForm.PromptResult decision)
+        private void ProcessUserDecision(AutoAskPendingEntry entry, AutoAskPromptForm.PromptResult decision, bool childProcessesInherit)
         {
             var controller = GlobalInstances.TinyWallControllerInstance;
             if (controller == null) return;
@@ -89,7 +89,10 @@ namespace pylorak.TinyWall
             {
                 case AutoAskPromptForm.PromptResult.AllowUnrestricted:
                     // Unrestricted TCP and UDP
-                    exceptions.Add(new FirewallExceptionV3(newSubject, new TcpUdpPolicy(unrestricted: true)));
+                    exceptions.Add(new FirewallExceptionV3(newSubject, new TcpUdpPolicy(unrestricted: true))
+                    {
+                        ChildProcessesInherit = childProcessesInherit
+                    });
                     break;
 
                 case AutoAskPromptForm.PromptResult.AllowWebOnly:
@@ -97,12 +100,18 @@ namespace pylorak.TinyWall
                     exceptions.Add(new FirewallExceptionV3(newSubject, new TcpUdpPolicy
                     {
                         AllowedRemoteTcpConnectPorts = "80,443"
-                    }));
+                    })
+                    {
+                        ChildProcessesInherit = childProcessesInherit
+                    });
                     break;
 
                 case AutoAskPromptForm.PromptResult.BlockAlways:
                     // Hard block
-                    exceptions.Add(new FirewallExceptionV3(newSubject, new HardBlockPolicy()));
+                    exceptions.Add(new FirewallExceptionV3(newSubject, new HardBlockPolicy())
+                    {
+                        ChildProcessesInherit = childProcessesInherit
+                    });
                     break;
 
                 case AutoAskPromptForm.PromptResult.BlockOnce:

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -69,6 +69,20 @@ namespace pylorak.TinyWall
             var mnuSearchGoogle = new ToolStripMenuItem("Search on Google for safety...", GlobalInstances.WebBtnIcon);
             mnuSearchGoogle.Click += (s, e) => this.HandleGoogleSearchClick();
             
+            var mnuSearchBlockGoogle = new ToolStripMenuItem("Can I block on Google?", GlobalInstances.WebBtnIcon);
+            mnuSearchBlockGoogle.Click += (s, e) => this.HandleGoogleSearchBlockClick();
+            
+            var mnuIncludeBlockCheckSettings = new ToolStripMenuItem("Include block safety in Google Process search", null)
+            {
+                CheckOnClick = true,
+                Checked = ActiveConfig.Controller.AutoAskIncludeBlockCheck
+            };
+            mnuIncludeBlockCheckSettings.Click += (s, e) =>
+            {
+                ActiveConfig.Controller.AutoAskIncludeBlockCheck = mnuIncludeBlockCheckSettings.Checked;
+                ActiveConfig.Controller.Save();
+            };
+            
             var mnuQuickPolicy = new ToolStripMenuItem("Quick Toggle Policy", null);
             var mnuQuickAllow = new ToolStripMenuItem("Quick Allow (Unrestricted)", GlobalInstances.ApplyBtnIcon);
             mnuQuickAllow.Click += (s, e) => this.HandleQuickPolicyClick(PolicyType.Unrestricted);
@@ -90,6 +104,8 @@ namespace pylorak.TinyWall
             listContextMenu.Items.Add(mnuVerifySignature);
             listContextMenu.Items.Add(mnuVirusTotal);
             listContextMenu.Items.Add(mnuSearchGoogle);
+            listContextMenu.Items.Add(mnuSearchBlockGoogle);
+            listContextMenu.Items.Add(mnuIncludeBlockCheckSettings);
             listContextMenu.Items.Add(new ToolStripSeparator());
             listContextMenu.Items.Add(mnuQuickPolicy);
             listContextMenu.Items.Add(mnuAuditSockets);
@@ -113,6 +129,9 @@ namespace pylorak.TinyWall
                 mnuVerifySignature.Enabled = isSingle && isFileSubj;
                 mnuVirusTotal.Enabled = isSingle && isFileSubj;
                 mnuSearchGoogle.Enabled = isSingle;
+                mnuSearchBlockGoogle.Enabled = isSingle;
+                mnuIncludeBlockCheckSettings.Enabled = isSingle;
+                mnuIncludeBlockCheckSettings.Checked = ActiveConfig.Controller.AutoAskIncludeBlockCheck;
                 mnuQuickPolicy.Enabled = count > 0;
                 mnuAuditSockets.Enabled = isSingle && isFileSubj;
                 mnuCopyToClipboard.Enabled = count > 0;
@@ -121,7 +140,7 @@ namespace pylorak.TinyWall
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.4.3", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.4.4", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
@@ -356,6 +375,52 @@ namespace pylorak.TinyWall
             try
             {
                 string query = $"is {exeName} safe legitimate or malware virus";
+                if (ActiveConfig.Controller.AutoAskIncludeBlockCheck)
+                {
+                    bool withSubtasks = ex.ChildProcessesInherit;
+                    query += withSubtasks
+                        ? $" and is it ok to block it and its child processes using TinyWall"
+                        : $" and is it ok to block it using TinyWall";
+                }
+                string url = "https://www.google.com/search?q=" + Uri.EscapeDataString(query);
+                var psi = new ProcessStartInfo(url) { UseShellExecute = true };
+                Process.Start(psi)?.Dispose();
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not open web browser: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleGoogleSearchBlockClick()
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string exeName = "";
+            if (ex.Subject is ExecutableSubject exeSubj)
+            {
+                exeName = exeSubj.ExecutableName;
+            }
+            else if (ex.Subject is AppContainerSubject uwpSubj)
+            {
+                exeName = uwpSubj.DisplayName;
+            }
+            else
+            {
+                exeName = ex.Subject.ToString();
+            }
+
+            if (string.IsNullOrEmpty(exeName)) return;
+
+            try
+            {
+                bool withSubtasks = ex.ChildProcessesInherit;
+                string query = withSubtasks
+                    ? $"is it ok to block {exeName} and its child processes using TinyWall"
+                    : $"is it ok to block {exeName} using TinyWall";
                 string url = "https://www.google.com/search?q=" + Uri.EscapeDataString(query);
                 var psi = new ProcessStartInfo(url) { UseShellExecute = true };
                 Process.Start(psi)?.Dispose();
