@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -72,16 +72,35 @@ namespace pylorak.TinyWall
             var mnuSearchBlockGoogle = new ToolStripMenuItem("Can I block on Google?", GlobalInstances.WebBtnIcon);
             mnuSearchBlockGoogle.Click += (s, e) => this.HandleGoogleSearchBlockClick();
             
+            var mnuSearchSettings = new ToolStripMenuItem("Search Settings", null);
+            
             var mnuIncludeBlockCheckSettings = new ToolStripMenuItem("Include block safety in Google Process search", null)
             {
-                CheckOnClick = true,
-                Checked = ActiveConfig.Controller.AutoAskIncludeBlockCheck
+                CheckOnClick = true
             };
             mnuIncludeBlockCheckSettings.Click += (s, e) =>
             {
                 ActiveConfig.Controller.AutoAskIncludeBlockCheck = mnuIncludeBlockCheckSettings.Checked;
                 ActiveConfig.Controller.Save();
             };
+
+            var mnuApplySubtasksSettings = new ToolStripMenuItem("Apply rules to child processes (subtasks)", null)
+            {
+                CheckOnClick = true
+            };
+            mnuApplySubtasksSettings.Click += (s, e) =>
+            {
+                if (listApplications.SelectedIndices.Count == 1)
+                {
+                    ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+                    FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+                    ex.ChildProcessesInherit = mnuApplySubtasksSettings.Checked;
+                    RebuildExceptionsList();
+                }
+            };
+
+            mnuSearchSettings.DropDownItems.Add(mnuIncludeBlockCheckSettings);
+            mnuSearchSettings.DropDownItems.Add(mnuApplySubtasksSettings);
             
             var mnuQuickPolicy = new ToolStripMenuItem("Quick Toggle Policy", null);
             var mnuQuickAllow = new ToolStripMenuItem("Quick Allow (Unrestricted)", GlobalInstances.ApplyBtnIcon);
@@ -105,7 +124,7 @@ namespace pylorak.TinyWall
             listContextMenu.Items.Add(mnuVirusTotal);
             listContextMenu.Items.Add(mnuSearchGoogle);
             listContextMenu.Items.Add(mnuSearchBlockGoogle);
-            listContextMenu.Items.Add(mnuIncludeBlockCheckSettings);
+            listContextMenu.Items.Add(mnuSearchSettings);
             listContextMenu.Items.Add(new ToolStripSeparator());
             listContextMenu.Items.Add(mnuQuickPolicy);
             listContextMenu.Items.Add(mnuAuditSockets);
@@ -130,8 +149,14 @@ namespace pylorak.TinyWall
                 mnuVirusTotal.Enabled = isSingle && isFileSubj;
                 mnuSearchGoogle.Enabled = isSingle;
                 mnuSearchBlockGoogle.Enabled = isSingle;
-                mnuIncludeBlockCheckSettings.Enabled = isSingle;
-                mnuIncludeBlockCheckSettings.Checked = ActiveConfig.Controller.AutoAskIncludeBlockCheck;
+                mnuSearchSettings.Enabled = isSingle;
+                if (isSingle)
+                {
+                    ListViewItem li = FilteredExceptionItems[this.listApplications.SelectedIndices[0]];
+                    FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+                    mnuIncludeBlockCheckSettings.Checked = ActiveConfig.Controller.AutoAskIncludeBlockCheck;
+                    mnuApplySubtasksSettings.Checked = ex.ChildProcessesInherit;
+                }
                 mnuQuickPolicy.Enabled = count > 0;
                 mnuAuditSockets.Enabled = isSingle && isFileSubj;
                 mnuCopyToClipboard.Enabled = count > 0;
@@ -140,7 +165,7 @@ namespace pylorak.TinyWall
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.4.4", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.4.6", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
