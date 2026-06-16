@@ -88,6 +88,9 @@ namespace pylorak.TinyWall
         [DataMember(EmitDefaultValue = false)]
         public bool AutoAskChildInherit = false;
 
+        [DataMember(EmitDefaultValue = false)]
+        public bool AutoAskIncludeFilePath = false;
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext sc)
         {

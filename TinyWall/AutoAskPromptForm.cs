@@ -71,7 +71,7 @@ namespace pylorak.TinyWall
             lblAppName = new Label
             {
                 Location = new Point(80, 20),
-                Size = new Size(380, 25),
+                Size = new Size(370, 25),
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Color.White
             };
@@ -137,15 +137,71 @@ namespace pylorak.TinyWall
             };
             btnBlockAlways.Click += (s, e) => { SelectedResult = PromptResult.BlockAlways; };
 
+            // Create copy to clipboard context menu
+            var copyMenu = new ContextMenuStrip();
+            ThemeManager.ApplyToControl(copyMenu);
+            copyMenu.Renderer = ThemeManager.GetToolStripRenderer();
+
+            var copyNameItem = new ToolStripMenuItem("Copy application name");
+            copyNameItem.Click += (s, e) => {
+                try 
+                { 
+                    string filename = Path.GetFileName(_appPath);
+                    Clipboard.SetText(string.IsNullOrEmpty(filename) ? "Unknown Application" : filename); 
+                } 
+                catch { }
+            };
+            var copyPathItem = new ToolStripMenuItem("Copy full file path");
+            copyPathItem.Click += (s, e) => {
+                try { Clipboard.SetText(_appPath); } catch { }
+            };
+
+            copyMenu.Items.Add(copyNameItem);
+            copyMenu.Items.Add(copyPathItem);
+
+            foreach (ToolStripItem item in copyMenu.Items)
+            {
+                item.ForeColor = ThemeManager.TextPrimary;
+                item.BackColor = ThemeManager.BackgroundColor;
+            }
+
+            var btnCopy = new Button
+            {
+                Text = "📋",
+                Location = new Point(455, 20),
+                Size = new Size(24, 24),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F)
+            };
+            btnCopy.Click += (s, e) => {
+                copyMenu.Show(btnCopy, new Point(0, btnCopy.Height));
+            };
+            ThemeManager.ApplyToControl(btnCopy);
+            btnCopy.BackColor = Color.Transparent;
+            btnCopy.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70);
+            btnCopy.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 45);
+            btnCopy.FlatAppearance.MouseDownBackColor = Color.FromArgb(30, 30, 30);
+
             this.Controls.Add(picIcon);
             this.Controls.Add(lblAppName);
             this.Controls.Add(lblAppPath);
+            this.Controls.Add(btnCopy);
             this.Controls.Add(lblDetails);
             this.Controls.Add(pnlOptions);
             this.Controls.Add(btnAllowUnrestricted);
             this.Controls.Add(btnAllowWebOnly);
             this.Controls.Add(btnBlockOnce);
             this.Controls.Add(btnBlockAlways);
+
+            lblAppName.ContextMenuStrip = copyMenu;
+            lblAppPath.ContextMenuStrip = copyMenu;
+            this.ContextMenuStrip = copyMenu;
+
+            // Add ToolTips to guide the user
+            var toolTip = new ToolTip();
+            toolTip.SetToolTip(lblAppName, "Right-click to copy name or path");
+            toolTip.SetToolTip(lblAppPath, "Right-click to copy name or path");
+            toolTip.SetToolTip(btnCopy, "Copy details to clipboard");
         }
 
         private void LoadAppDetails()
@@ -185,6 +241,7 @@ namespace pylorak.TinyWall
             links.Add(("Open Folder", "folder"));
             links.Add(("Verify Signature", "signature"));
             links.Add(("Check VirusTotal", "virustotal"));
+            links.Add(("Check Path", "google_path"));
             links.Add(("Google Process", "google_process"));
             links.Add(("Can I Block?", "google_block"));
             if (!string.IsNullOrEmpty(_remoteIp) && _remoteIp != "::" && _remoteIp != "0.0.0.0" && _remoteIp != "127.0.0.1" && _remoteIp != "::1")
@@ -346,10 +403,22 @@ namespace pylorak.TinyWall
                     string url = $"https://www.virustotal.com/gui/search/{hash}";
                     Utils.StartProcess(url, string.Empty, false);
                 }
+                else if (tag == "google_path")
+                {
+                    string filename = Path.GetFileName(_appPath);
+                    string directory = Path.GetDirectoryName(_appPath) ?? "";
+                    string query = !string.IsNullOrEmpty(directory)
+                        ? $"is {filename} in {directory} safe legitimate or malware virus"
+                        : $"is {filename} safe legitimate or malware virus";
+
+                    string url = $"https://www.google.com/search?q={Uri.EscapeDataString(query)}";
+                    Utils.StartProcess(url, string.Empty, false);
+                }
                 else if (tag == "google_process")
                 {
                     string filename = Path.GetFileName(_appPath);
                     string query = $"is {filename} safe legitimate or malware virus";
+
                     if (ActiveConfig.Controller.AutoAskIncludeBlockCheck)
                     {
                         bool withSubtasks = ActiveConfig.Controller.AutoAskChildInherit;
@@ -364,9 +433,11 @@ namespace pylorak.TinyWall
                 {
                     string filename = Path.GetFileName(_appPath);
                     bool withSubtasks = ActiveConfig.Controller.AutoAskChildInherit;
-                    string query = withSubtasks 
+
+                    string query = withSubtasks
                         ? $"is it ok to block {filename} and its child processes using TinyWall"
                         : $"is it ok to block {filename} using TinyWall";
+
                     string url = $"https://www.google.com/search?q={Uri.EscapeDataString(query)}";
                     Utils.StartProcess(url, string.Empty, false);
                 }

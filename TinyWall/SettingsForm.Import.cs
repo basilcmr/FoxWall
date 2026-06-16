@@ -71,6 +71,9 @@ namespace pylorak.TinyWall
             
             var mnuSearchBlockGoogle = new ToolStripMenuItem("Can I block on Google?", GlobalInstances.WebBtnIcon);
             mnuSearchBlockGoogle.Click += (s, e) => this.HandleGoogleSearchBlockClick();
+
+            var mnuSearchPathGoogle = new ToolStripMenuItem("Check Path on Google...", GlobalInstances.WebBtnIcon);
+            mnuSearchPathGoogle.Click += (s, e) => this.HandleGoogleSearchPathClick();
             
             var mnuSearchSettings = new ToolStripMenuItem("Search Settings", null);
             
@@ -116,6 +119,14 @@ namespace pylorak.TinyWall
             var mnuAuditSockets = new ToolStripMenuItem("Audit Active Sockets...", GlobalInstances.UpdateBtnIcon);
             mnuAuditSockets.Click += (s, e) => this.HandleAuditSocketsClick();
 
+            var mnuCopyDetails = new ToolStripMenuItem("Copy Name/Path", null);
+            var mnuCopyNameOnly = new ToolStripMenuItem("Copy Name Only", null);
+            mnuCopyNameOnly.Click += (s, e) => this.HandleCopyAppNameClick(false);
+            var mnuCopyFullPath = new ToolStripMenuItem("Copy Full Path", null);
+            mnuCopyFullPath.Click += (s, e) => this.HandleCopyAppNameClick(true);
+            mnuCopyDetails.DropDownItems.Add(mnuCopyNameOnly);
+            mnuCopyDetails.DropDownItems.Add(mnuCopyFullPath);
+
             var mnuCopyToClipboard = new ToolStripMenuItem("Copy to Clipboard...", GlobalInstances.ExportBtnIcon);
             mnuCopyToClipboard.Click += (s, e) => this.HandleCopyToClipboardClick();
 
@@ -124,11 +135,13 @@ namespace pylorak.TinyWall
             listContextMenu.Items.Add(mnuVirusTotal);
             listContextMenu.Items.Add(mnuSearchGoogle);
             listContextMenu.Items.Add(mnuSearchBlockGoogle);
+            listContextMenu.Items.Add(mnuSearchPathGoogle);
             listContextMenu.Items.Add(mnuSearchSettings);
             listContextMenu.Items.Add(new ToolStripSeparator());
             listContextMenu.Items.Add(mnuQuickPolicy);
             listContextMenu.Items.Add(mnuAuditSockets);
             listContextMenu.Items.Add(new ToolStripSeparator());
+            listContextMenu.Items.Add(mnuCopyDetails);
             listContextMenu.Items.Add(mnuCopyToClipboard);
 
             listContextMenu.Opening += (s, e) =>
@@ -149,7 +162,9 @@ namespace pylorak.TinyWall
                 mnuVirusTotal.Enabled = isSingle && isFileSubj;
                 mnuSearchGoogle.Enabled = isSingle;
                 mnuSearchBlockGoogle.Enabled = isSingle;
+                mnuSearchPathGoogle.Enabled = isSingle && isFileSubj;
                 mnuSearchSettings.Enabled = isSingle;
+                mnuCopyDetails.Enabled = isSingle;
                 if (isSingle)
                 {
                     ListViewItem li = FilteredExceptionItems[this.listApplications.SelectedIndices[0]];
@@ -165,7 +180,7 @@ namespace pylorak.TinyWall
             this.listApplications.ContextMenuStrip = listContextMenu;
 
             // 4. Add FoxWall version line and shift other labels down programmatically to prevent overlap on tabPage4
-            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.4.6", this.lblVersion.Text, Application.ProductVersion);
+            this.lblVersion.Text = string.Format(CultureInfo.CurrentCulture, "{0} {1}\nFoxWall 1.4.7", this.lblVersion.Text, Application.ProductVersion);
             this.label12.Top += 15;
             this.label6.Top += 15;
             this.lblAboutHomepageLink.Top += 15;
@@ -382,9 +397,16 @@ namespace pylorak.TinyWall
             FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
 
             string exeName = "";
+            string resolvedPath = "";
             if (ex.Subject is ExecutableSubject exeSubj)
             {
                 exeName = exeSubj.ExecutableName;
+                resolvedPath = exeSubj.ExecutablePath;
+            }
+            else if (ex.Subject is ServiceSubject srvSubj)
+            {
+                exeName = ex.Subject.ToString();
+                resolvedPath = srvSubj.ExecutablePath;
             }
             else if (ex.Subject is AppContainerSubject uwpSubj)
             {
@@ -395,11 +417,22 @@ namespace pylorak.TinyWall
                 exeName = ex.Subject.ToString();
             }
 
+            string directory = "";
+            if (!string.IsNullOrEmpty(resolvedPath))
+            {
+                try
+                {
+                    directory = System.IO.Path.GetDirectoryName(WildcardHelper.ResolveWildcardPath(resolvedPath)) ?? "";
+                }
+                catch { }
+            }
+
             if (string.IsNullOrEmpty(exeName)) return;
 
             try
             {
                 string query = $"is {exeName} safe legitimate or malware virus";
+
                 if (ActiveConfig.Controller.AutoAskIncludeBlockCheck)
                 {
                     bool withSubtasks = ex.ChildProcessesInherit;
@@ -429,6 +462,10 @@ namespace pylorak.TinyWall
             {
                 exeName = exeSubj.ExecutableName;
             }
+            else if (ex.Subject is ServiceSubject srvSubj)
+            {
+                exeName = ex.Subject.ToString();
+            }
             else if (ex.Subject is AppContainerSubject uwpSubj)
             {
                 exeName = uwpSubj.DisplayName;
@@ -446,6 +483,7 @@ namespace pylorak.TinyWall
                 string query = withSubtasks
                     ? $"is it ok to block {exeName} and its child processes using TinyWall"
                     : $"is it ok to block {exeName} using TinyWall";
+
                 string url = "https://www.google.com/search?q=" + Uri.EscapeDataString(query);
                 var psi = new ProcessStartInfo(url) { UseShellExecute = true };
                 Process.Start(psi)?.Dispose();
@@ -453,6 +491,118 @@ namespace pylorak.TinyWall
             catch (Exception exx)
             {
                 MessageBox.Show(this, "Could not open web browser: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleGoogleSearchPathClick()
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string exeName = "";
+            string resolvedPath = "";
+            if (ex.Subject is ExecutableSubject exeSubj)
+            {
+                exeName = exeSubj.ExecutableName;
+                resolvedPath = exeSubj.ExecutablePath;
+            }
+            else if (ex.Subject is ServiceSubject srvSubj)
+            {
+                exeName = ex.Subject.ToString();
+                resolvedPath = srvSubj.ExecutablePath;
+            }
+            else if (ex.Subject is AppContainerSubject uwpSubj)
+            {
+                exeName = uwpSubj.DisplayName;
+            }
+            else
+            {
+                exeName = ex.Subject.ToString();
+            }
+
+            string directory = "";
+            if (!string.IsNullOrEmpty(resolvedPath))
+            {
+                try
+                {
+                    directory = System.IO.Path.GetDirectoryName(WildcardHelper.ResolveWildcardPath(resolvedPath)) ?? "";
+                }
+                catch { }
+            }
+
+            if (string.IsNullOrEmpty(exeName)) return;
+
+            try
+            {
+                string query = !string.IsNullOrEmpty(directory)
+                    ? $"is {exeName} in {directory} safe legitimate or malware virus"
+                    : $"is {exeName} safe legitimate or malware virus";
+
+                string url = "https://www.google.com/search?q=" + Uri.EscapeDataString(query);
+                var psi = new ProcessStartInfo(url) { UseShellExecute = true };
+                Process.Start(psi)?.Dispose();
+            }
+            catch (Exception exx)
+            {
+                MessageBox.Show(this, "Could not open web browser: " + exx.Message, "FoxWall Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void HandleCopyAppNameClick(bool withPath)
+        {
+            if (listApplications.SelectedIndices.Count != 1) return;
+
+            ListViewItem li = FilteredExceptionItems[listApplications.SelectedIndices[0]];
+            FirewallExceptionV3 ex = (FirewallExceptionV3)li.Tag;
+
+            string textToCopy = "";
+            if (withPath)
+            {
+                if (ex.Subject is ExecutableSubject exeSubj)
+                {
+                    textToCopy = exeSubj.ExecutablePath;
+                }
+                else if (ex.Subject is ServiceSubject srvSubj)
+                {
+                    textToCopy = srvSubj.ExecutablePath;
+                }
+                else
+                {
+                    textToCopy = ex.Subject.ToString();
+                }
+            }
+            else
+            {
+                if (ex.Subject is ExecutableSubject exeSubj)
+                {
+                    textToCopy = exeSubj.ExecutableName;
+                }
+                else if (ex.Subject is ServiceSubject srvSubj)
+                {
+                    try
+                    {
+                        textToCopy = System.IO.Path.GetFileName(srvSubj.ExecutablePath);
+                    }
+                    catch
+                    {
+                        textToCopy = ex.Subject.ToString();
+                    }
+                }
+                else
+                {
+                    textToCopy = ex.Subject.ToString();
+                }
+            }
+
+            if (!string.IsNullOrEmpty(textToCopy))
+            {
+                try
+                {
+                    Clipboard.SetText(textToCopy);
+                }
+                catch { }
             }
         }
 
