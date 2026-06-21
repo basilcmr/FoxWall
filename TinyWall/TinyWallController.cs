@@ -665,7 +665,7 @@ namespace pylorak.TinyWall
 
                 // [FoxWall Enhancement] - Start
                 case FirewallMode.AutoAsk:
-                    Tray.Icon = Resources.Icons.shield_blue_small;
+                    Tray.Icon = Resources.Icons.shield_blue_ask_small;
                     mnuMode.Image = mnuModeAutoAsk.Image;
                     FirewallModeName = "AutoAsk";
                     break;
@@ -1544,7 +1544,7 @@ namespace pylorak.TinyWall
                 mnuModeLearn.Image = Resources.Icons.shield_blue_small.ToBitmap();
                 mnuModeJellyMode.Image = Resources.Icons.shield_purple;
                 // [FoxWall Enhancement] - Start
-                mnuModeAutoAsk.Image = Resources.Icons.shield_blue_small.ToBitmap();
+                mnuModeAutoAsk.Image = Resources.Icons.shield_blue_ask_small.ToBitmap();
                 // [FoxWall Enhancement] - End
                 TrayMenuShowing = false;
 

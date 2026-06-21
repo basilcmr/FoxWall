@@ -60,6 +60,7 @@ namespace pylorak.TinyWall
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.TopMost = true;
+            this.Icon = Resources.Icons.shield_blue_ask;
 
             picIcon = new PictureBox
             {
