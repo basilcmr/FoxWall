@@ -478,6 +478,10 @@ namespace pylorak.TinyWall
 
         private void VerifyUpdates()
         {
+            // [FoxWall Enhancement] - Start
+            // Disabled checking/prompting for official TinyWall updates
+            return;
+            /*
             try
             {
                 UpdateDescriptor? descriptor = FirewallState.Update;
@@ -500,6 +504,8 @@ namespace pylorak.TinyWall
                 // If we fail (for whatever reason, no internet, server down etc.),
                 // we fail silently.
             }
+            */
+            // [FoxWall Enhancement] - End
         }
 
         private void UpdateTimerTick(object state)
